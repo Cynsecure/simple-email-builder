@@ -1,3 +1,15 @@
+# Build
+cd packages/email-builder
+npm i
+npm run build
+npm pack
+
+
+# Install 
+npm install https://github.com/Cynsecure/simple-email-builder/tree/main/packages/email-builder/usewaypoint-email-builder-0.0.8.tgz
+
+
+
 <div align="center">
   <h1>EmailBuilder.js</h1>
   <p align="center">
