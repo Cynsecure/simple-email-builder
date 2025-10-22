@@ -1,51 +1,51 @@
-import insane, { AllowedTags } from 'insane';
-import { marked, Renderer } from 'marked';
-import React, { CSSProperties, useMemo } from 'react';
+import insane, { AllowedTags } from "insane";
+import { marked, Renderer } from "marked";
+import React, { CSSProperties, useMemo } from "react";
 
 const ALLOWED_TAGS: AllowedTags[] = [
-  'a',
-  'article',
-  'b',
-  'blockquote',
-  'br',
-  'caption',
-  'code',
-  'del',
-  'details',
-  'div',
-  'em',
-  'h1',
-  'h2',
-  'h3',
-  'h4',
-  'h5',
-  'h6',
-  'hr',
-  'i',
-  'img',
-  'ins',
-  'kbd',
-  'li',
-  'main',
-  'ol',
-  'p',
-  'pre',
-  'section',
-  'span',
-  'strong',
-  'sub',
-  'summary',
-  'sup',
-  'table',
-  'tbody',
-  'td',
-  'th',
-  'thead',
-  'tr',
-  'u',
-  'ul',
+  "a",
+  "article",
+  "b",
+  "blockquote",
+  "br",
+  "caption",
+  "code",
+  "del",
+  "details",
+  "div",
+  "em",
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "hr",
+  "i",
+  "img",
+  "ins",
+  "kbd",
+  "li",
+  "main",
+  "ol",
+  "p",
+  "pre",
+  "section",
+  "span",
+  "strong",
+  "sub",
+  "summary",
+  "sup",
+  "table",
+  "tbody",
+  "td",
+  "th",
+  "thead",
+  "tr",
+  "u",
+  "ul",
 ];
-const GENERIC_ALLOWED_ATTRIBUTES = ['style', 'title'];
+const GENERIC_ALLOWED_ATTRIBUTES = ["style", "title"];
 
 function sanitizer(html: string): string {
   return insane(html, {
@@ -55,13 +55,20 @@ function sanitizer(html: string): string {
         res[tag] = [...GENERIC_ALLOWED_ATTRIBUTES];
         return res;
       }, {}),
-      img: ['src', 'srcset', 'alt', 'width', 'height', ...GENERIC_ALLOWED_ATTRIBUTES],
-      table: ['width', ...GENERIC_ALLOWED_ATTRIBUTES],
-      td: ['align', 'width', ...GENERIC_ALLOWED_ATTRIBUTES],
-      th: ['align', 'width', ...GENERIC_ALLOWED_ATTRIBUTES],
-      a: ['href', 'target', ...GENERIC_ALLOWED_ATTRIBUTES],
-      ol: ['start', ...GENERIC_ALLOWED_ATTRIBUTES],
-      ul: ['start', ...GENERIC_ALLOWED_ATTRIBUTES],
+      img: [
+        "src",
+        "srcset",
+        "alt",
+        "width",
+        "height",
+        ...GENERIC_ALLOWED_ATTRIBUTES,
+      ],
+      table: ["width", ...GENERIC_ALLOWED_ATTRIBUTES],
+      td: ["align", "width", ...GENERIC_ALLOWED_ATTRIBUTES],
+      th: ["align", "width", ...GENERIC_ALLOWED_ATTRIBUTES],
+      a: ["href", "target", ...GENERIC_ALLOWED_ATTRIBUTES],
+      ol: ["start", ...GENERIC_ALLOWED_ATTRIBUTES],
+      ul: ["start", ...GENERIC_ALLOWED_ATTRIBUTES],
     },
   });
 }
@@ -93,8 +100,8 @@ function renderMarkdownString(str: string): string {
     silent: false,
     renderer: new CustomRenderer(),
   });
-  if (typeof html !== 'string') {
-    throw new Error('marked.parse did not return a string');
+  if (typeof html !== "string") {
+    throw new Error("marked.parse did not return a string");
   }
   return sanitizer(html);
 }
