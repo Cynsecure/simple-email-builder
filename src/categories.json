@@ -1,0 +1,77 @@
+[
+	{
+		"key": "banking_industry",
+		"name": "Banking & Industry",
+		"count": 27
+	},
+	{
+		"key": "entertainment",
+		"name": "Entertainment",
+		"count": 33
+	},
+	{
+		"key": "fitness_health",
+		"name": "Fitness & Health",
+		"count": 30
+	},
+	{
+		"key": "food",
+		"name": "Food",
+		"count": 73
+	},
+	{
+		"key": "india",
+		"name": "India",
+		"count": 128
+	},
+	{
+		"key": "international",
+		"name": "International",
+		"count": 54
+	},
+	{
+		"key": "jobs",
+		"name": "Jobs",
+		"count": 23
+	},
+	{
+		"key": "lifestyle",
+		"name": "Lifestyle",
+		"count": 87
+	},
+	{
+		"key": "politics",
+		"name": "Politics",
+		"count": 110
+	},
+	{
+		"key": "real_estates",
+		"name": "Real Estates",
+		"count": 20
+	},
+	{
+		"key": "share_market",
+		"name": "Share Market",
+		"count": 36
+	},
+	{
+		"key": "sports",
+		"name": "Sports",
+		"count": 141
+	},
+	{
+		"key": "startups",
+		"name": "Startups",
+		"count": 40
+	},
+	{
+		"key": "technology",
+		"name": "Technology",
+		"count": 87
+	},
+	{
+		"key": "travel_tourism",
+		"name": "Travel & Tourism",
+		"count": 43
+	}
+]

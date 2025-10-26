@@ -1,34 +1,79 @@
 {
-  "name": "@usewaypoint-monorepo",
-  "version": "0.0.6",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "target": "ES2022",
-  "files": [
-    "dist"
-  ],
-  "scripts": {
-    "build": "npx tsc",
-    "test": "npx jest"
-  },
-  "author": "carlos@usewaypoint.com",
-  "license": "MIT",
-  "devDependencies": {
-    "@jest/globals": "^29.7.0",
-    "@testing-library/react": "^14.2.1",
-    "@types/jest": "^29.5.12",
-    "@typescript-eslint/eslint-plugin": "^6.21.0",
-    "eslint": "^8.56.0",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-simple-import-sort": "^11.0.0",
-    "jest": "^29.7.0",
-    "jest-environment-jsdom": "^29.7.0",
-    "prettier": "^3.2.5",
-    "react-test-renderer": "^18.2.0",
-    "ts-jest": "^29.1.2",
-    "ts-node": "^10.9.2",
-    "tsup": "^8.0.2",
-    "typescript": "^5.3.3",
-    "zod": "^3.22.4"
-  }
+	"name": "uwp-email-builder",
+	"version": "0.0.12",
+	"main": "./dist/cjs/index.js",
+	"module": "./dist/esm/index.js",
+	"types": "./dist/esm/index.d.ts",
+	"typings": "./dist/esm/index.d.ts",
+	"scripts": {
+		"v:dev": "vite",
+		"v:build": "vite build",
+		"v:preview": "vite preview",
+		"prepublishOnly": "npm i && npm run compile",
+		"postpublish": "npm run clean",
+		"compile": "npm run clean && npm run compile:esm && npm run compile:cjs",
+		"compile:esm": "tsc",
+		"compile:cjs": "tsc --module commonjs --outDir dist/cjs",
+		"clean": "rimraf dist"
+	},
+	"dependencies": {
+		"@usewaypoint/block-avatar": "^0.0.3",
+		"@usewaypoint/block-button": "^0.0.3",
+		"@usewaypoint/block-columns-container": "^0.0.3",
+		"@usewaypoint/block-container": "^0.0.2",
+		"@usewaypoint/block-divider": "^0.0.4",
+		"@usewaypoint/block-heading": "^0.0.3",
+		"@usewaypoint/block-html": "^0.0.3",
+		"@usewaypoint/block-image": "^0.0.5",
+		"@usewaypoint/block-spacer": "^0.0.3",
+		"@usewaypoint/block-text": "^0.0.6",
+		"@usewaypoint/document-core": "^0.0.6",
+		"@usewaypoint/email-builder": "^0.0.8",
+		"html2canvas": "^1.4.1",
+		"uuid": "^11.0.5"
+	},
+	"devDependencies": {
+		"@types/node": "^22.10.5",
+		"@types/react": "^18.2.55",
+		"@types/react-dom": "^18.2.19",
+		"@types/uuid": "^10.0.0",
+		"@typescript-eslint/eslint-plugin": "^6.21.0",
+		"@typescript-eslint/parser": "^6.21.0",
+		"@vitejs/plugin-react-swc": "^3.5.0",
+		"eslint": "^8.56.0",
+		"eslint-plugin-react-hooks": "^4.6.0",
+		"eslint-plugin-react-refresh": "^0.4.5",
+		"eslint-plugin-simple-import-sort": "^12.0.0",
+		"typescript": "^5.2.2",
+		"vite": "^5.1.0"
+	},
+	"peerDependencies": {
+		"@emotion/react": ">=11",
+		"@emotion/styled": ">=11",
+		"@mui/icons-material": ">=5",
+		"@mui/material": ">=5",
+		"prettier": ">=2",
+		"react": ">=18",
+		"react-colorful": ">=5",
+		"react-dom": ">=18",
+		"swr": ">=2",
+		"zod": ">=3",
+		"zustand": ">=4"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/shivamdevs/email-builder"
+	},
+	"author": "ShivamDevs",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/shivamdevs/email-builder",
+		"email": "shivam0dewangan@gmail.com"
+	},
+	"files": [
+		"dist",
+		"LICENSE",
+		"package.json",
+		"README.md"
+	]
 }
