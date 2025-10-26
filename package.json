@@ -1,10 +1,23 @@
 {
-	"name": "uwp-email-builder",
-	"version": "0.0.12",
+	"name": "simple-email-builder",
+	"description": "Simple email builder",
+	"private": false,
+	"version": "0.0.1",
 	"main": "./dist/cjs/index.js",
 	"module": "./dist/esm/index.js",
 	"types": "./dist/esm/index.d.ts",
 	"typings": "./dist/esm/index.d.ts",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/Cynsecure/simple-email-builder"
+	},
+	"license": "MIT",
+	"files": [
+		"dist",
+		"LICENSE",
+		"package.json",
+		"README.md"
+	],
 	"scripts": {
 		"v:dev": "vite",
 		"v:build": "vite build",
@@ -60,20 +73,10 @@
 		"zod": ">=3",
 		"zustand": ">=4"
 	},
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/shivamdevs/email-builder"
-	},
-	"author": "ShivamDevs",
-	"license": "MIT",
-	"bugs": {
-		"url": "https://github.com/shivamdevs/email-builder",
-		"email": "shivam0dewangan@gmail.com"
-	},
-	"files": [
-		"dist",
-		"LICENSE",
-		"package.json",
-		"README.md"
-	]
+	"exports": {
+		".": {
+			"import": "./dist/esm/index.js",
+			"require": "./dist/cjs/index.js"
+		}
+	}
 }
