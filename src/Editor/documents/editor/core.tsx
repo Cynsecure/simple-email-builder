@@ -2,7 +2,6 @@ import React from "react";
 import { z } from "zod";
 
 import { Avatar, AvatarPropsSchema } from "@usewaypoint/block-avatar";
-import { Button, ButtonPropsSchema } from "@usewaypoint/block-button";
 import { Divider, DividerPropsSchema } from "@usewaypoint/block-divider";
 import { Html, HtmlPropsSchema } from "@usewaypoint/block-html";
 import { Image, ImagePropsSchema } from "@usewaypoint/block-image";
@@ -23,6 +22,8 @@ import HeadingEditor from "../blocks/Heading/HeadingEditor";
 import HeadingPropsSchema from "../blocks/Heading/HeadingPropsSchema";
 import TextEditor from "../blocks/Text/TextEditor";
 import TextPropsSchema from "../blocks/Text/TextPropsSchema";
+import ButtonEditor from "../blocks/Button/ButtonEditor";
+import ButtonPropsSchema from "../blocks/Button/ButtonPropsSchema";
 import EditorBlockWrapper from "../blocks/helpers/block-wrappers/EditorBlockWrapper";
 
 const EDITOR_DICTIONARY = buildBlockConfigurationDictionary({
@@ -38,7 +39,7 @@ const EDITOR_DICTIONARY = buildBlockConfigurationDictionary({
     schema: ButtonPropsSchema,
     Component: (props) => (
       <EditorBlockWrapper>
-        <Button {...props} />
+        <ButtonEditor {...props} />
       </EditorBlockWrapper>
     ),
   },
