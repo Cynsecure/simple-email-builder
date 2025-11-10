@@ -1,8 +1,7 @@
 import React, { useState } from "react";
+import { Box, Typography, Paper } from "@mui/material";
 
 import BaseSidebarPanel from "./helpers/BaseSidebarPanel";
-import BooleanInput from "./helpers/inputs/BooleanInput";
-import TextInput from "./helpers/inputs/TextInput";
 import MultiStylePropertyPanel from "./helpers/style-inputs/MultiStylePropertyPanel";
 
 // Import our local schema instead of the external one
@@ -32,32 +31,47 @@ export default function TextSidebarPanel({
 
   return (
     <BaseSidebarPanel title="Text block">
-      <TextInput
-        label="Plain Text Content"
-        rows={3}
-        defaultValue={data.props?.text ?? ""}
-        onChange={(text) =>
-          updateData({ ...data, props: { ...data.props, text } })
-        }
-      />
-
-      <TextInput
-        label="Rich Text Content (HTML)"
-        rows={5}
-        defaultValue={data.props?.richText ?? ""}
-        onChange={(richText) =>
-          updateData({ ...data, props: { ...data.props, richText } })
-        }
-        helperText="You can enter HTML content here or use the rich text editor in the canvas"
-      />
-
-      <BooleanInput
-        label="Enable Markdown"
-        defaultValue={data.props?.markdown ?? false}
-        onChange={(markdown) =>
-          updateData({ ...data, props: { ...data.props, markdown } })
-        }
-      />
+      {/* <Box sx={{ mb: 2 }}>
+        <Typography variant="subtitle2" sx={{ mb: 1 }}>
+          Rich Text Content
+        </Typography>
+        <Paper
+          variant="outlined"
+          sx={{
+            p: 2,
+            minHeight: 120,
+            maxHeight: 200,
+            overflowY: "auto",
+            backgroundColor: "#f9f9f9",
+            border: "1px solid #e0e0e0",
+          }}
+        >
+          {data.props?.richText ? (
+            <Box
+              dangerouslySetInnerHTML={{ __html: data.props.richText }}
+              sx={{
+                "& p": { margin: "0 0 8px 0" },
+                "& p:last-child": { margin: 0 },
+                "& h1, & h2, & h3, & h4, & h5, & h6": { margin: "0 0 8px 0" },
+                "& ul, & ol": { margin: "0 0 8px 0", paddingLeft: "20px" },
+                "& li": { margin: "0 0 4px 0" },
+                fontSize: "14px",
+                lineHeight: 1.4,
+              }}
+            />
+          ) : (
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+                fontStyle: "italic",
+              }}
+            >
+              Click on the text block in the canvas to edit content
+            </Typography>
+          )}
+        </Paper>
+      </Box> */}
 
       <MultiStylePropertyPanel
         names={[

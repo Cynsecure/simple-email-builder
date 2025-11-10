@@ -6,8 +6,6 @@ const TextPropsSchema = z.object({
   style: BaseTextPropsSchema.shape.style,
   props: z
     .object({
-      text: z.string().optional().nullable(),
-      markdown: z.boolean().optional().nullable(),
       richText: z.string().optional().nullable(), // For rich text content
     })
     .optional()

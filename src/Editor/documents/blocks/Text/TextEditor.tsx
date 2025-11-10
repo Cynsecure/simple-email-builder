@@ -7,24 +7,55 @@ import {
   Divider,
   Menu,
   MenuItem,
+  TextField,
+  Stack,
 } from "@mui/material";
 import {
   FormatBold,
   FormatItalic,
   FormatUnderlined,
-  FormatAlignLeft,
-  FormatAlignCenter,
-  FormatAlignRight,
+  FormatStrikethrough,
+  Superscript,
+  Subscript,
+  FormatColorText,
   FormatListBulleted,
   FormatListNumbered,
   Link as LinkIcon,
   Person as PersonIcon,
+  FontDownload,
+  FormatSize,
 } from "@mui/icons-material";
 
 import { useCurrentBlockId } from "../../editor/EditorBlock";
 import { setDocument, useDocument } from "../../editor/EditorContext";
+import { FONT_FAMILIES } from "../helpers/fontFamily";
 
 import { TextProps } from "./TextPropsSchema";
+
+// Font size options - using actual pixel values for consistency with sidebar
+const FONT_SIZES = [
+  { label: "8px", value: "8px" },
+  { label: "10px", value: "10px" },
+  { label: "12px", value: "12px" },
+  { label: "14px", value: "14px" },
+  { label: "16px", value: "16px" },
+  { label: "18px", value: "18px" },
+  { label: "24px", value: "24px" },
+  { label: "32px", value: "32px" },
+  { label: "36px", value: "36px" },
+  { label: "40px", value: "40px" },
+  { label: "44px", value: "44px" },
+  { label: "48px", value: "48px" },
+];
+
+// Helper function to convert font family key to CSS value
+const getFontFamilyValue = (
+  fontFamilyKey: string | null | undefined
+): string | undefined => {
+  if (!fontFamilyKey) return undefined;
+  const fontFamily = FONT_FAMILIES.find((f) => f.key === fontFamilyKey);
+  return fontFamily ? fontFamily.value : fontFamilyKey;
+};
 
 export default function TextEditor({ style, props }: TextProps) {
   const editorDocument = useDocument();
@@ -36,8 +67,17 @@ export default function TextEditor({ style, props }: TextProps) {
   const [variableMenuAnchor, setVariableMenuAnchor] =
     useState<null | HTMLElement>(null);
   const variableButtonRef = useRef<HTMLButtonElement>(null);
+  const [colorPickerAnchor, setColorPickerAnchor] =
+    useState<null | HTMLElement>(null);
+  const [savedSelection, setSavedSelection] = useState<Range | null>(null);
+  const [fontFamilyMenuAnchor, setFontFamilyMenuAnchor] =
+    useState<null | HTMLElement>(null);
+  const fontFamilyButtonRef = useRef<HTMLButtonElement>(null);
+  const [fontSizeMenuAnchor, setFontSizeMenuAnchor] =
+    useState<null | HTMLElement>(null);
+  const fontSizeButtonRef = useRef<HTMLButtonElement>(null);
 
-  const content = props?.richText || props?.text || "";
+  const content = props?.richText || "";
 
   useEffect(() => {
     // Only set innerHTML when not editing and content has actually changed from external source
@@ -62,13 +102,12 @@ export default function TextEditor({ style, props }: TextProps) {
   const updateContent = () => {
     if (editorRef.current) {
       const richText = editorRef.current.innerHTML;
-      const textContent = editorRef.current.textContent || "";
 
       // Update the lastContentRef to current editor content to prevent useEffect interference
       lastContentRef.current = richText;
 
       // Only update if content actually changed
-      if (richText !== props?.richText || textContent !== props?.text) {
+      if (richText !== props?.richText) {
         setDocument({
           [currentBlockId]: {
             type: "Text",
@@ -77,7 +116,6 @@ export default function TextEditor({ style, props }: TextProps) {
               props: {
                 ...props,
                 richText,
-                text: textContent,
               },
             },
           },
@@ -125,10 +163,19 @@ export default function TextEditor({ style, props }: TextProps) {
         relatedTarget.closest('[role="menuitem"]') ||
         relatedTarget.closest(".MuiPaper-root") ||
         relatedTarget.closest(".MuiMenu-root") ||
-        relatedTarget.closest(".MuiIconButton-root"))
+        relatedTarget.closest(".MuiIconButton-root") ||
+        relatedTarget.closest('input[type="color"]') ||
+        relatedTarget.closest('input[type="text"]') ||
+        relatedTarget.closest("form"))
     ) {
       return;
     }
+
+    // Close any open menus when blurring
+    setFontFamilyMenuAnchor(null);
+    setFontSizeMenuAnchor(null);
+    setColorPickerAnchor(null);
+    setVariableMenuAnchor(null);
 
     setIsEditing(false);
     updateContent();
@@ -176,14 +223,16 @@ export default function TextEditor({ style, props }: TextProps) {
     value,
     onClick,
   }: {
-    command: string;
+    command?: string;
     icon: React.ReactNode;
     tooltip: string;
     value?: string;
-    onClick?: () => void;
+    onClick?: (event: React.MouseEvent<HTMLElement>) => void;
   }) => {
     // Check if the command is currently active
-    const isActive = window.document.queryCommandState(command);
+    const isActive = command
+      ? window.document.queryCommandState(command)
+      : false;
 
     return (
       <Tooltip title={tooltip}>
@@ -192,8 +241,8 @@ export default function TextEditor({ style, props }: TextProps) {
           onMouseDown={(e) => {
             e.preventDefault();
             if (onClick) {
-              onClick();
-            } else {
+              onClick(e);
+            } else if (command) {
               executeCommand(command, value);
             }
             // Force immediate update after click
@@ -229,7 +278,8 @@ export default function TextEditor({ style, props }: TextProps) {
     );
   };
 
-  const handleLinkClick = () => {
+  const handleLinkClick = (event: React.MouseEvent<HTMLElement>) => {
+    event.preventDefault();
     const url = prompt("Enter URL:");
     if (url) {
       executeCommand("createLink", url);
@@ -240,8 +290,168 @@ export default function TextEditor({ style, props }: TextProps) {
     }
   };
 
+  const handleColorPickerOpen = (event: React.MouseEvent<HTMLElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Save the current selection before opening the color picker
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      setSavedSelection(selection.getRangeAt(0).cloneRange());
+    }
+
+    setColorPickerAnchor(event.currentTarget);
+  };
+
+  const handleColorPickerClose = () => {
+    setColorPickerAnchor(null);
+    setSavedSelection(null);
+  };
+
+  const applyTextColor = (color: string) => {
+    if (color && editorRef.current) {
+      // Restore the saved selection before applying color
+      if (savedSelection) {
+        const selection = window.getSelection();
+        if (selection) {
+          selection.removeAllRanges();
+          selection.addRange(savedSelection);
+        }
+      }
+
+      // Focus the editor and apply the color
+      editorRef.current.focus();
+      executeCommand("foreColor", color);
+      handleColorPickerClose();
+
+      // Update content to reflect the change
+      setTimeout(() => {
+        updateContent();
+      }, 10);
+    }
+  };
+
+  const handleCustomColorSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const color = formData.get("customColor") as string;
+    if (color) {
+      applyTextColor(color);
+    }
+  };
+
   const handleVariableMenuClose = () => {
     setVariableMenuAnchor(null);
+  };
+
+  const handleFontFamilyMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Save the current selection before opening the font family menu
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      setSavedSelection(selection.getRangeAt(0).cloneRange());
+    }
+
+    setFontFamilyMenuAnchor(fontFamilyButtonRef.current);
+  };
+
+  const handleFontFamilyMenuClose = () => {
+    setFontFamilyMenuAnchor(null);
+    setSavedSelection(null);
+  };
+
+  const applyFontFamily = (fontFamilyKey: string) => {
+    if (fontFamilyKey && editorRef.current) {
+      // Restore the saved selection before applying font family
+      if (savedSelection) {
+        const selection = window.getSelection();
+        if (selection) {
+          selection.removeAllRanges();
+          selection.addRange(savedSelection);
+        }
+      }
+
+      // Focus the editor and apply the font family
+      editorRef.current.focus();
+
+      // Get the CSS font family value
+      const fontFamily = FONT_FAMILIES.find((f) => f.key === fontFamilyKey);
+      if (fontFamily) {
+        executeCommand("fontName", fontFamily.value);
+      }
+
+      handleFontFamilyMenuClose();
+
+      // Update content to reflect the change
+      setTimeout(() => {
+        updateContent();
+      }, 10);
+    }
+  };
+
+  const handleFontSizeMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Save the current selection before opening the font size menu
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      setSavedSelection(selection.getRangeAt(0).cloneRange());
+    }
+
+    setFontSizeMenuAnchor(fontSizeButtonRef.current);
+  };
+
+  const handleFontSizeMenuClose = () => {
+    setFontSizeMenuAnchor(null);
+    setSavedSelection(null);
+  };
+
+  const applyFontSize = (fontSize: string) => {
+    if (fontSize && editorRef.current) {
+      // Restore the saved selection before applying font size
+      if (savedSelection) {
+        const selection = window.getSelection();
+        if (selection) {
+          selection.removeAllRanges();
+          selection.addRange(savedSelection);
+        }
+      }
+
+      // Focus the editor and apply the font size
+      editorRef.current.focus();
+
+      // Always use pixel values for consistency with sidebar
+      // Wrap the selected text in a span with inline style
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const selectedText = range.toString();
+
+        if (selectedText) {
+          // Create a span element with the font size
+          const span = document.createElement("span");
+          span.style.fontSize = fontSize;
+          span.textContent = selectedText;
+
+          // Replace the selected text with the styled span
+          range.deleteContents();
+          range.insertNode(span);
+
+          // Clear selection
+          selection.removeAllRanges();
+        }
+      }
+
+      handleFontSizeMenuClose();
+
+      // Update content to reflect the change
+      setTimeout(() => {
+        updateContent();
+      }, 10);
+    }
   };
 
   const insertVariable = (variableType: string) => {
@@ -306,26 +516,105 @@ export default function TextEditor({ style, props }: TextProps) {
 
   if (isEditing) {
     return (
-      <Box sx={{ position: "relative" }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+        {/* Rich Text Editor */}
+        <div
+          key={`${currentBlockId}-edit-${style?.padding ? `${style.padding.top}-${style.padding.bottom}-${style.padding.left}-${style.padding.right}` : "default"}`} // Force re-render when switching blocks or padding changes
+          ref={editorRef}
+          contentEditable
+          suppressContentEditableWarning
+          onBlur={handleBlur}
+          onInput={handleInput}
+          style={{
+            minHeight: "40px",
+            // Apply padding from style configuration, or default to 8px
+            padding: style?.padding
+              ? `${style.padding.top}px ${style.padding.right}px ${style.padding.bottom}px ${style.padding.left}px`
+              : "8px",
+            border: "2px solid #1976d2",
+            borderRadius: "4px",
+            outline: "none",
+            cursor: "text",
+            ...(style && {
+              color: style.color || undefined,
+              backgroundColor: style.backgroundColor || undefined,
+              fontSize: style.fontSize || undefined,
+              fontFamily: getFontFamilyValue(style.fontFamily) || undefined,
+              fontWeight: style.fontWeight || undefined,
+              textAlign: style.textAlign || undefined,
+            }),
+          }}
+        />
+
         {/* Rich Text Toolbar */}
         <Paper
           key={toolbarKey} // Force re-render to update active states
           elevation={2}
           onMouseDown={(e) => e.preventDefault()} // Prevent focus loss when clicking toolbar
           sx={{
-            position: "absolute",
-            bottom: -50,
-            left: 0,
-            right: 0,
             p: 1,
             display: "flex",
             gap: 0.5,
             alignItems: "center",
-            zIndex: 1000,
             background: "white",
             borderRadius: 1,
           }}
         >
+          <Tooltip title="Font Family">
+            <IconButton
+              ref={fontFamilyButtonRef}
+              size="small"
+              onMouseDown={(e) => {
+                e.preventDefault(); // Prevent focus loss
+              }}
+              onClick={handleFontFamilyMenuOpen}
+              sx={{
+                minWidth: 32,
+                height: 32,
+                backgroundColor: fontFamilyMenuAnchor
+                  ? "rgba(25, 118, 210, 0.12)"
+                  : "transparent",
+                border: fontFamilyMenuAnchor
+                  ? "1px solid rgba(25, 118, 210, 0.5)"
+                  : "1px solid transparent",
+                "&:hover": {
+                  backgroundColor: "rgba(0, 0, 0, 0.04)",
+                  boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.2)",
+                },
+              }}
+            >
+              <FontDownload />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Font Size">
+            <IconButton
+              ref={fontSizeButtonRef}
+              size="small"
+              onMouseDown={(e) => {
+                e.preventDefault(); // Prevent focus loss
+              }}
+              onClick={handleFontSizeMenuOpen}
+              sx={{
+                minWidth: 32,
+                height: 32,
+                backgroundColor: fontSizeMenuAnchor
+                  ? "rgba(25, 118, 210, 0.12)"
+                  : "transparent",
+                border: fontSizeMenuAnchor
+                  ? "1px solid rgba(25, 118, 210, 0.5)"
+                  : "1px solid transparent",
+                "&:hover": {
+                  backgroundColor: "rgba(0, 0, 0, 0.04)",
+                  boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.2)",
+                },
+              }}
+            >
+              <FormatSize />
+            </IconButton>
+          </Tooltip>
+
+          <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+
           <ToolbarButton command="bold" icon={<FormatBold />} tooltip="Bold" />
           <ToolbarButton
             command="italic"
@@ -337,23 +626,31 @@ export default function TextEditor({ style, props }: TextProps) {
             icon={<FormatUnderlined />}
             tooltip="Underline"
           />
+          <ToolbarButton
+            command="strikeThrough"
+            icon={<FormatStrikethrough />}
+            tooltip="Strikethrough"
+          />
 
           <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
 
           <ToolbarButton
-            command="justifyLeft"
-            icon={<FormatAlignLeft />}
-            tooltip="Align Left"
+            command="superscript"
+            icon={<Superscript />}
+            tooltip="Superscript"
           />
           <ToolbarButton
-            command="justifyCenter"
-            icon={<FormatAlignCenter />}
-            tooltip="Align Center"
+            command="subscript"
+            icon={<Subscript />}
+            tooltip="Subscript"
           />
+
+          <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+
           <ToolbarButton
-            command="justifyRight"
-            icon={<FormatAlignRight />}
-            tooltip="Align Right"
+            icon={<FormatColorText />}
+            tooltip="Text Color"
+            onClick={handleColorPickerOpen}
           />
 
           <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
@@ -424,6 +721,137 @@ export default function TextEditor({ style, props }: TextProps) {
           </Box>
         </Paper>
 
+        {/* Color Picker Menu */}
+        <Menu
+          anchorEl={colorPickerAnchor}
+          open={Boolean(colorPickerAnchor)}
+          onClose={handleColorPickerClose}
+          anchorOrigin={{
+            vertical: "bottom",
+            horizontal: "center",
+          }}
+          transformOrigin={{
+            vertical: "top",
+            horizontal: "center",
+          }}
+          sx={{
+            zIndex: 2000,
+            "& .MuiPopover-paper": {
+              marginTop: "42px !important",
+            },
+          }}
+          disableAutoFocus
+          disableEnforceFocus
+          disableRestoreFocus
+          slotProps={{
+            paper: {
+              style: {
+                padding: 8,
+                minWidth: 160,
+              },
+            },
+          }}
+        >
+          <Stack spacing={1.5}>
+            {/* Color Picker Input */}
+            <Box>
+              <label
+                style={{
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  marginBottom: 8,
+                  display: "block",
+                }}
+              >
+                Pick a Color
+              </label>
+              <input
+                type="color"
+                onChange={(e) => applyTextColor(e.target.value)}
+                style={{
+                  width: "100%",
+                  height: 40,
+                  border: "1px solid #ddd",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                }}
+              />
+            </Box>
+
+            {/* Common Colors */}
+            <Box>
+              <label
+                style={{
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  marginBottom: 8,
+                  display: "block",
+                }}
+              >
+                Common Colors
+              </label>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(8, 1fr)",
+                  gap: 1,
+                }}
+              >
+                {[
+                  "#000000",
+                  "#333333",
+                  "#666666",
+                  "#999999",
+                  "#FF0000",
+                  "#00FF00",
+                  "#0000FF",
+                  "#FFFF00",
+                  "#FF00FF",
+                  "#00FFFF",
+                  "#FFA500",
+                  "#800080",
+                  "#008000",
+                  "#FFC0CB",
+                  "#A52A2A",
+                  "#808080",
+                ].map((color) => (
+                  <Box
+                    key={color}
+                    onClick={() => applyTextColor(color)}
+                    sx={{
+                      width: 24,
+                      height: 24,
+                      backgroundColor: color,
+                      border: "1px solid #ddd",
+                      borderRadius: 1,
+                      cursor: "pointer",
+                      "&:hover": {
+                        transform: "scale(1.1)",
+                        boxShadow: "0px 2px 4px rgba(0,0,0,0.2)",
+                      },
+                    }}
+                  />
+                ))}
+              </Box>
+            </Box>
+
+            {/* Custom Color Input */}
+            <Box component="form" onSubmit={handleCustomColorSubmit}>
+              <TextField
+                name="customColor"
+                label="Custom Color"
+                placeholder="Enter hex, rgb, or color name"
+                size="small"
+                fullWidth
+                sx={{ mb: 1 }}
+              />
+              <Box sx={{ fontSize: "0.75rem", color: "text.secondary" }}>
+                Examples: #FF0000, rgb(255,0,0), red
+              </Box>
+            </Box>
+          </Stack>
+        </Menu>
+
         {/* Variable Menu - Rendered outside Paper to avoid z-index issues */}
         <Menu
           anchorEl={variableMenuAnchor}
@@ -472,31 +900,100 @@ export default function TextEditor({ style, props }: TextProps) {
           </MenuItem>
         </Menu>
 
-        {/* Rich Text Editor */}
-        <div
-          key={currentBlockId} // Force re-render when switching blocks
-          ref={editorRef}
-          contentEditable
-          suppressContentEditableWarning
-          onBlur={handleBlur}
-          onInput={handleInput}
-          style={{
-            minHeight: "40px",
-            padding: "8px",
-            border: "2px solid #1976d2",
-            borderRadius: "4px",
-            outline: "none",
-            cursor: "text",
-            ...(style && {
-              color: style.color || undefined,
-              backgroundColor: style.backgroundColor || undefined,
-              fontSize: style.fontSize || undefined,
-              fontFamily: style.fontFamily || undefined,
-              fontWeight: style.fontWeight || undefined,
-              textAlign: style.textAlign || undefined,
-            }),
+        {/* Font Family Menu */}
+        <Menu
+          anchorEl={fontFamilyMenuAnchor}
+          open={Boolean(fontFamilyMenuAnchor)}
+          onClose={handleFontFamilyMenuClose}
+          anchorOrigin={{
+            vertical: "bottom",
+            horizontal: "center",
           }}
-        />
+          transformOrigin={{
+            vertical: "top",
+            horizontal: "center",
+          }}
+          sx={{
+            zIndex: 2000,
+          }}
+          disableAutoFocus
+          disableEnforceFocus
+          disableRestoreFocus
+          slotProps={{
+            paper: {
+              style: {
+                maxHeight: 300,
+                minWidth: 200,
+                overflow: "auto",
+              },
+            },
+          }}
+        >
+          {FONT_FAMILIES.map((font) => (
+            <MenuItem
+              key={font.key}
+              onClick={() => applyFontFamily(font.key)}
+              onMouseDown={(e) => e.preventDefault()}
+              sx={{
+                fontFamily: font.value,
+                fontSize: "14px",
+                padding: "8px 16px",
+                "&:hover": {
+                  backgroundColor: "rgba(25, 118, 210, 0.08)",
+                },
+              }}
+            >
+              {font.label}
+            </MenuItem>
+          ))}
+        </Menu>
+
+        {/* Font Size Menu */}
+        <Menu
+          anchorEl={fontSizeMenuAnchor}
+          open={Boolean(fontSizeMenuAnchor)}
+          onClose={handleFontSizeMenuClose}
+          anchorOrigin={{
+            vertical: "bottom",
+            horizontal: "center",
+          }}
+          transformOrigin={{
+            vertical: "top",
+            horizontal: "center",
+          }}
+          sx={{
+            zIndex: 2000,
+          }}
+          disableAutoFocus
+          disableEnforceFocus
+          disableRestoreFocus
+          slotProps={{
+            paper: {
+              style: {
+                maxHeight: 250,
+                minWidth: 120,
+                overflow: "auto",
+              },
+            },
+          }}
+        >
+          {FONT_SIZES.map((size) => (
+            <MenuItem
+              key={size.value}
+              onClick={() => applyFontSize(size.value)}
+              onMouseDown={(e) => e.preventDefault()}
+              sx={{
+                fontSize: size.label,
+                padding: "8px 16px",
+                "&:hover": {
+                  backgroundColor: "rgba(25, 118, 210, 0.08)",
+                },
+              }}
+            >
+              {size.label}
+            </MenuItem>
+          ))}
+        </Menu>
       </Box>
     );
   }
@@ -505,14 +1002,17 @@ export default function TextEditor({ style, props }: TextProps) {
   const displayStyle = {
     cursor: "pointer" as const,
     minHeight: "40px",
-    padding: "8px",
+    // Apply padding from style configuration, or default to 8px
+    padding: style?.padding
+      ? `${style.padding.top}px ${style.padding.right}px ${style.padding.bottom}px ${style.padding.left}px`
+      : "8px",
     border: "1px solid transparent",
     borderRadius: "4px",
     ...(style && {
       color: style.color || undefined,
       backgroundColor: style.backgroundColor || undefined,
       fontSize: style.fontSize || undefined,
-      fontFamily: style.fontFamily || undefined,
+      fontFamily: getFontFamilyValue(style.fontFamily) || undefined,
       fontWeight: style.fontWeight || undefined,
       textAlign: style.textAlign || undefined,
     }),
@@ -520,7 +1020,7 @@ export default function TextEditor({ style, props }: TextProps) {
 
   return (
     <div
-      key={currentBlockId} // Force re-render when switching blocks
+      key={`${currentBlockId}-display-${style?.padding ? `${style.padding.top}-${style.padding.bottom}-${style.padding.left}-${style.padding.right}` : "default"}`} // Force re-render when switching blocks or padding changes
       onClick={handleFocus}
       style={displayStyle}
       onMouseOver={(e) => {
@@ -533,7 +1033,18 @@ export default function TextEditor({ style, props }: TextProps) {
       {content ? (
         <div
           dangerouslySetInnerHTML={{ __html: content }}
-          style={{ minHeight: "20px" }}
+          style={{
+            minHeight: "20px",
+            // Ensure the content inherits the same font styles as the editor
+            ...(style && {
+              color: style.color || undefined,
+              backgroundColor: style.backgroundColor || undefined,
+              fontSize: style.fontSize || undefined,
+              fontFamily: getFontFamilyValue(style.fontFamily) || undefined,
+              fontWeight: style.fontWeight || undefined,
+              textAlign: style.textAlign || undefined,
+            }),
+          }}
         />
       ) : (
         <div style={{ color: "#999", fontStyle: "italic" }}>
