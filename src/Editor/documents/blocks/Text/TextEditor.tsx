@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from "react";
+import { HexColorInput, HexColorPicker } from "react-colorful";
 import {
   Box,
   Paper,
@@ -7,8 +8,8 @@ import {
   Divider,
   Menu,
   MenuItem,
-  TextField,
   Stack,
+  Button,
 } from "@mui/material";
 import {
   FormatBold,
@@ -21,9 +22,9 @@ import {
   FormatListBulleted,
   FormatListNumbered,
   Link as LinkIcon,
-  Person as PersonIcon,
   FontDownload,
   FormatSize,
+  KeyboardArrowDown,
 } from "@mui/icons-material";
 
 import { useCurrentBlockId } from "../../editor/EditorBlock";
@@ -48,6 +49,40 @@ const FONT_SIZES = [
   { label: "48px", value: "48px" },
 ];
 
+// Color palette for the color picker - matching sidebar colors
+const DEFAULT_PRESET_COLORS = [
+  "#E11D48",
+  "#DB2777",
+  "#C026D3",
+  "#9333EA",
+  "#7C3AED",
+  "#4F46E5",
+  "#2563EB",
+  "#0284C7",
+  "#0891B2",
+  "#0D9488",
+  "#059669",
+  "#16A34A",
+  "#65A30D",
+  "#CA8A04",
+  "#D97706",
+  "#EA580C",
+  "#DC2626",
+  "#FFFFFF",
+  "#FAFAFA",
+  "#F5F5F5",
+  "#E5E5E5",
+  "#D4D4D4",
+  "#A3A3A3",
+  "#737373",
+  "#525252",
+  "#404040",
+  "#262626",
+  "#171717",
+  "#0A0A0A",
+  "#000000",
+];
+
 // Helper function to convert font family key to CSS value
 const getFontFamilyValue = (
   fontFamilyKey: string | null | undefined
@@ -55,6 +90,52 @@ const getFontFamilyValue = (
   if (!fontFamilyKey) return undefined;
   const fontFamily = FONT_FAMILIES.find((f) => f.key === fontFamilyKey);
   return fontFamily ? fontFamily.value : fontFamilyKey;
+};
+
+// Color swatch component - matching sidebar implementation
+const ColorSwatch = ({
+  paletteColors,
+  value,
+  onChange,
+}: {
+  paletteColors: string[];
+  value: string;
+  onChange: (value: string) => void;
+}) => {
+  const renderButton = (colorValue: string) => {
+    return (
+      <Button
+        key={colorValue}
+        onClick={() => onChange(colorValue)}
+        sx={{
+          width: 24,
+          height: 24,
+          backgroundColor: colorValue,
+          border: "1px solid",
+          borderColor: value === colorValue ? "black" : "grey.200",
+          minWidth: 24,
+          display: "inline-flex",
+          "&:hover": {
+            backgroundColor: colorValue,
+            borderColor: "grey.500",
+          },
+        }}
+      />
+    );
+  };
+
+  return (
+    <Box
+      width="100%"
+      sx={{
+        display: "grid",
+        gap: 1,
+        gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr 1fr",
+      }}
+    >
+      {paletteColors.map((c) => renderButton(c))}
+    </Box>
+  );
 };
 
 export default function TextEditor({ style, props }: TextProps) {
@@ -70,12 +151,16 @@ export default function TextEditor({ style, props }: TextProps) {
   const [colorPickerAnchor, setColorPickerAnchor] =
     useState<null | HTMLElement>(null);
   const [savedSelection, setSavedSelection] = useState<Range | null>(null);
+  const [currentColor, setCurrentColor] = useState<string>("#000000");
+  const [previewColor, setPreviewColor] = useState<string>("#000000");
+  const colorPickerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [fontFamilyMenuAnchor, setFontFamilyMenuAnchor] =
     useState<null | HTMLElement>(null);
   const fontFamilyButtonRef = useRef<HTMLButtonElement>(null);
   const [fontSizeMenuAnchor, setFontSizeMenuAnchor] =
     useState<null | HTMLElement>(null);
   const fontSizeButtonRef = useRef<HTMLButtonElement>(null);
+  const colorPickerButtonRef = useRef<HTMLButtonElement>(null);
 
   const content = props?.richText || "";
 
@@ -166,7 +251,8 @@ export default function TextEditor({ style, props }: TextProps) {
         relatedTarget.closest(".MuiIconButton-root") ||
         relatedTarget.closest('input[type="color"]') ||
         relatedTarget.closest('input[type="text"]') ||
-        relatedTarget.closest("form"))
+        relatedTarget.closest("form") ||
+        relatedTarget.closest(".MuiButton-root"))
     ) {
       return;
     }
@@ -207,11 +293,14 @@ export default function TextEditor({ style, props }: TextProps) {
 
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Cleanup timeout on unmount
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (updateTimeoutRef.current) {
         clearTimeout(updateTimeoutRef.current);
+      }
+      if (colorPickerTimeoutRef.current) {
+        clearTimeout(colorPickerTimeoutRef.current);
       }
     };
   }, []);
@@ -251,7 +340,7 @@ export default function TextEditor({ style, props }: TextProps) {
             }, 10);
           }}
           sx={{
-            minWidth: 32,
+            width: 32,
             height: 32,
             backgroundColor: isActive
               ? "rgba(25, 118, 210, 0.12)"
@@ -270,6 +359,7 @@ export default function TextEditor({ style, props }: TextProps) {
                 ? "0px 3px 6px rgba(25, 118, 210, 0.4)"
                 : "0px 1px 3px rgba(0, 0, 0, 0.2)",
             },
+            p: 0,
           }}
         >
           {icon}
@@ -298,18 +388,53 @@ export default function TextEditor({ style, props }: TextProps) {
     const selection = window.getSelection();
     if (selection && selection.rangeCount > 0) {
       setSavedSelection(selection.getRangeAt(0).cloneRange());
+
+      // Try to get current color from selection
+      const parentElement =
+        selection.getRangeAt(0).commonAncestorContainer.parentElement;
+      if (parentElement) {
+        const computedStyle = window.getComputedStyle(parentElement);
+        const currentTextColor = computedStyle.color;
+        // Convert rgb to hex if needed
+        if (currentTextColor && currentTextColor.startsWith("rgb")) {
+          const rgbMatch = currentTextColor.match(/\d+/g);
+          if (rgbMatch && rgbMatch.length === 3) {
+            const hex =
+              "#" +
+              rgbMatch
+                .map((x) => parseInt(x).toString(16).padStart(2, "0"))
+                .join("");
+            setCurrentColor(hex);
+            setPreviewColor(hex);
+          }
+        } else if (currentTextColor && currentTextColor.startsWith("#")) {
+          setCurrentColor(currentTextColor);
+          setPreviewColor(currentTextColor);
+        }
+      }
+    } else {
+      // If no selection, use current color or default
+      setPreviewColor(currentColor);
     }
 
-    setColorPickerAnchor(event.currentTarget);
+    setColorPickerAnchor(colorPickerButtonRef.current);
   };
 
   const handleColorPickerClose = () => {
+    // Clear any pending timeouts
+    if (colorPickerTimeoutRef.current) {
+      clearTimeout(colorPickerTimeoutRef.current);
+    }
+
     setColorPickerAnchor(null);
     setSavedSelection(null);
   };
 
-  const applyTextColor = (color: string) => {
+  const applyTextColor = (color: string, shouldCloseMenu: boolean = false) => {
     if (color && editorRef.current) {
+      // Update the current color state
+      setCurrentColor(color);
+
       // Restore the saved selection before applying color
       if (savedSelection) {
         const selection = window.getSelection();
@@ -322,7 +447,18 @@ export default function TextEditor({ style, props }: TextProps) {
       // Focus the editor and apply the color
       editorRef.current.focus();
       executeCommand("foreColor", color);
-      handleColorPickerClose();
+
+      // Clear the selection after applying color
+      setTimeout(() => {
+        const selection = window.getSelection();
+        if (selection) {
+          selection.removeAllRanges();
+        }
+      }, 50);
+
+      if (shouldCloseMenu) {
+        handleColorPickerClose();
+      }
 
       // Update content to reflect the change
       setTimeout(() => {
@@ -331,13 +467,15 @@ export default function TextEditor({ style, props }: TextProps) {
     }
   };
 
-  const handleCustomColorSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const color = formData.get("customColor") as string;
-    if (color) {
-      applyTextColor(color);
-    }
+  const handleColorConfirm = () => {
+    // Apply the preview color to the text
+    applyTextColor(previewColor, true);
+  };
+
+  const handleColorCancel = () => {
+    // Reset preview color to current color and close menu
+    setPreviewColor(currentColor);
+    handleColorPickerClose();
   };
 
   const handleVariableMenuClose = () => {
@@ -527,14 +665,18 @@ export default function TextEditor({ style, props }: TextProps) {
           onInput={handleInput}
           style={{
             minHeight: "40px",
-            // Apply padding from style configuration, or default to 8px
-            padding: style?.padding
-              ? `${style.padding.top}px ${style.padding.right}px ${style.padding.bottom}px ${style.padding.left}px`
-              : "8px",
+            maxHeight: "200px",
+            maxWidth: "100%",
+            overflowY: "auto",
+            paddingTop: 8,
+            paddingBottom: 8,
+            paddingLeft: style?.padding ? style.padding.left : 8,
+            paddingRight: style?.padding ? style.padding.right : 8,
             border: "2px solid #1976d2",
             borderRadius: "4px",
             outline: "none",
             cursor: "text",
+            lineHeight: 1.5,
             ...(style && {
               color: style.color || undefined,
               backgroundColor: style.backgroundColor || undefined,
@@ -548,140 +690,198 @@ export default function TextEditor({ style, props }: TextProps) {
 
         {/* Rich Text Toolbar */}
         <Paper
-          key={toolbarKey} // Force re-render to update active states
+          key={toolbarKey}
           elevation={2}
-          onMouseDown={(e) => e.preventDefault()} // Prevent focus loss when clicking toolbar
+          onMouseDown={(e) => e.preventDefault()}
           sx={{
             p: 1,
             display: "flex",
+            flexWrap: "wrap",
             gap: 0.5,
             alignItems: "center",
             background: "white",
             borderRadius: 1,
           }}
         >
-          <Tooltip title="Font Family">
-            <IconButton
-              ref={fontFamilyButtonRef}
-              size="small"
-              onMouseDown={(e) => {
-                e.preventDefault(); // Prevent focus loss
-              }}
-              onClick={handleFontFamilyMenuOpen}
-              sx={{
-                minWidth: 32,
-                height: 32,
-                backgroundColor: fontFamilyMenuAnchor
-                  ? "rgba(25, 118, 210, 0.12)"
-                  : "transparent",
-                border: fontFamilyMenuAnchor
-                  ? "1px solid rgba(25, 118, 210, 0.5)"
-                  : "1px solid transparent",
-                "&:hover": {
-                  backgroundColor: "rgba(0, 0, 0, 0.04)",
-                  boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.2)",
-                },
-              }}
-            >
-              <FontDownload />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Font Size">
-            <IconButton
-              ref={fontSizeButtonRef}
-              size="small"
-              onMouseDown={(e) => {
-                e.preventDefault(); // Prevent focus loss
-              }}
-              onClick={handleFontSizeMenuOpen}
-              sx={{
-                minWidth: 32,
-                height: 32,
-                backgroundColor: fontSizeMenuAnchor
-                  ? "rgba(25, 118, 210, 0.12)"
-                  : "transparent",
-                border: fontSizeMenuAnchor
-                  ? "1px solid rgba(25, 118, 210, 0.5)"
-                  : "1px solid transparent",
-                "&:hover": {
-                  backgroundColor: "rgba(0, 0, 0, 0.04)",
-                  boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.2)",
-                },
-              }}
-            >
-              <FormatSize />
-            </IconButton>
-          </Tooltip>
+          {/* First row - Basic formatting */}
+          <Box
+            sx={{
+              display: "flex",
+              gap: 0.5,
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            <ToolbarButton
+              command="bold"
+              icon={<FormatBold />}
+              tooltip="Bold"
+            />
+            <ToolbarButton
+              command="italic"
+              icon={<FormatItalic />}
+              tooltip="Italic"
+            />
+            <ToolbarButton
+              command="underline"
+              icon={<FormatUnderlined />}
+              tooltip="Underline"
+            />
+            <ToolbarButton
+              command="strikeThrough"
+              icon={<FormatStrikethrough />}
+              tooltip="Strikethrough"
+            />
 
-          <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+            <ToolbarButton
+              command="superscript"
+              icon={<Superscript />}
+              tooltip="Superscript"
+            />
+            <ToolbarButton
+              command="subscript"
+              icon={<Subscript />}
+              tooltip="Subscript"
+            />
 
-          <ToolbarButton command="bold" icon={<FormatBold />} tooltip="Bold" />
-          <ToolbarButton
-            command="italic"
-            icon={<FormatItalic />}
-            tooltip="Italic"
-          />
-          <ToolbarButton
-            command="underline"
-            icon={<FormatUnderlined />}
-            tooltip="Underline"
-          />
-          <ToolbarButton
-            command="strikeThrough"
-            icon={<FormatStrikethrough />}
-            tooltip="Strikethrough"
-          />
+            <Divider
+              orientation="vertical"
+              flexItem
+              sx={{ mx: 0.5, height: 24 }}
+            />
 
-          <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
-
-          <ToolbarButton
-            command="superscript"
-            icon={<Superscript />}
-            tooltip="Superscript"
-          />
-          <ToolbarButton
-            command="subscript"
-            icon={<Subscript />}
-            tooltip="Subscript"
-          />
-
-          <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
-
-          <ToolbarButton
-            icon={<FormatColorText />}
-            tooltip="Text Color"
-            onClick={handleColorPickerOpen}
-          />
-
-          <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
-
-          <ToolbarButton
-            command="insertUnorderedList"
-            icon={<FormatListBulleted />}
-            tooltip="Bullet List"
-          />
-          <ToolbarButton
-            command="insertOrderedList"
-            icon={<FormatListNumbered />}
-            tooltip="Numbered List"
-          />
-
-          <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
-
-          <ToolbarButton
-            command="createLink"
-            icon={<LinkIcon />}
-            tooltip="Insert Link"
-            onClick={handleLinkClick}
-          />
-
-          <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
-
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <Tooltip title="Insert Variable">
+            <Tooltip title="Font Family">
               <IconButton
+                ref={fontFamilyButtonRef}
+                size="small"
+                onMouseDown={(e) => {
+                  e.preventDefault(); // Prevent focus loss
+                }}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  handleFontFamilyMenuOpen(event);
+                }}
+                sx={{
+                  width: 32,
+                  height: 32,
+                  backgroundColor: fontFamilyMenuAnchor
+                    ? "rgba(25, 118, 210, 0.12)"
+                    : "transparent",
+                  border: fontFamilyMenuAnchor
+                    ? "1px solid rgba(25, 118, 210, 0.5)"
+                    : "1px solid transparent",
+                  "&:hover": {
+                    backgroundColor: "rgba(0, 0, 0, 0.04)",
+                    boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.2)",
+                  },
+                }}
+              >
+                <FontDownload />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Font Size">
+              <IconButton
+                ref={fontSizeButtonRef}
+                size="small"
+                onMouseDown={(e) => {
+                  e.preventDefault(); // Prevent focus loss
+                }}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  handleFontSizeMenuOpen(event);
+                }}
+                sx={{
+                  width: 32,
+                  height: 32,
+                  backgroundColor: fontSizeMenuAnchor
+                    ? "rgba(25, 118, 210, 0.12)"
+                    : "transparent",
+                  border: fontSizeMenuAnchor
+                    ? "1px solid rgba(25, 118, 210, 0.5)"
+                    : "1px solid transparent",
+                  "&:hover": {
+                    backgroundColor: "rgba(0, 0, 0, 0.04)",
+                    boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.2)",
+                  },
+                }}
+              >
+                <FormatSize />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Text Color">
+              <IconButton
+                ref={colorPickerButtonRef}
+                size="small"
+                onMouseDown={(e) => {
+                  e.preventDefault(); // Prevent focus loss
+                }}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  handleColorPickerOpen(event);
+                }}
+                sx={{
+                  width: 32,
+                  height: 32,
+                  backgroundColor: colorPickerAnchor
+                    ? "rgba(25, 118, 210, 0.12)"
+                    : "transparent",
+                  border: colorPickerAnchor
+                    ? "1px solid rgba(25, 118, 210, 0.5)"
+                    : "1px solid transparent",
+                  "&:hover": {
+                    backgroundColor: "rgba(0, 0, 0, 0.04)",
+                    boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.2)",
+                  },
+                }}
+              >
+                <FormatColorText />
+              </IconButton>
+            </Tooltip>
+          </Box>
+
+          {/* Second row - Lists, links, and advanced features */}
+          <Box
+            sx={{
+              display: "flex",
+              gap: 0.5,
+              alignItems: "center",
+              width: { xs: "100%", sm: "auto" }, // Full width on mobile to force wrap
+              justifyContent: { xs: "flex-start", sm: "flex-start" },
+            }}
+          >
+            <ToolbarButton
+              command="insertUnorderedList"
+              icon={<FormatListBulleted />}
+              tooltip="Bullet List"
+            />
+            <ToolbarButton
+              command="insertOrderedList"
+              icon={<FormatListNumbered />}
+              tooltip="Numbered List"
+            />
+
+            <Divider
+              orientation="vertical"
+              flexItem
+              sx={{ mx: 0.5, height: 24 }}
+            />
+
+            <ToolbarButton
+              command="createLink"
+              icon={<LinkIcon />}
+              tooltip="Insert Link"
+              onClick={handleLinkClick}
+            />
+
+            <Tooltip title="Insert Variable">
+              <Button
                 ref={variableButtonRef}
                 size="small"
+                endIcon={<KeyboardArrowDown />}
                 onMouseDown={(e) => {
                   e.preventDefault(); // Prevent focus loss
                 }}
@@ -692,32 +892,25 @@ export default function TextEditor({ style, props }: TextProps) {
                   setVariableMenuAnchor(variableButtonRef.current);
                 }}
                 sx={{
-                  minWidth: 32,
+                  minWidth: "auto",
                   height: 32,
+                  fontSize: "11px",
+                  textTransform: "none",
                   backgroundColor: variableMenuAnchor
                     ? "rgba(25, 118, 210, 0.12)"
                     : "transparent",
-                  border: "1px solid rgba(25, 118, 210, 0.5)",
+                  color: "rgba(0, 0, 0, 0.7)",
                   "&:hover": {
                     backgroundColor: "rgba(0, 0, 0, 0.04)",
-                    boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.2)",
+                  },
+                  "& .MuiButton-endIcon": {
+                    marginLeft: 0.5,
                   },
                 }}
               >
-                <PersonIcon />
-              </IconButton>
+                Variable
+              </Button>
             </Tooltip>
-            <Box
-              component="span"
-              sx={{
-                fontSize: "12px",
-                color: "rgba(0, 0, 0, 0.6)",
-                fontWeight: 500,
-                userSelect: "none",
-              }}
-            >
-              Variable
-            </Box>
           </Box>
         </Paper>
 
@@ -725,20 +918,23 @@ export default function TextEditor({ style, props }: TextProps) {
         <Menu
           anchorEl={colorPickerAnchor}
           open={Boolean(colorPickerAnchor)}
-          onClose={handleColorPickerClose}
+          onClose={(event, reason) => {
+            // Only allow closing via the buttons, not clicking outside
+            if (reason === "backdropClick" || reason === "escapeKeyDown") {
+              return;
+            }
+            handleColorPickerClose();
+          }}
           anchorOrigin={{
             vertical: "bottom",
-            horizontal: "center",
+            horizontal: "left",
           }}
           transformOrigin={{
             vertical: "top",
-            horizontal: "center",
+            horizontal: "left",
           }}
           sx={{
             zIndex: 2000,
-            "& .MuiPopover-paper": {
-              marginTop: "42px !important",
-            },
           }}
           disableAutoFocus
           disableEnforceFocus
@@ -746,108 +942,92 @@ export default function TextEditor({ style, props }: TextProps) {
           slotProps={{
             paper: {
               style: {
-                padding: 8,
-                minWidth: 160,
+                maxHeight: "auto",
+                minWidth: 300,
+                overflow: "visible",
               },
             },
           }}
         >
-          <Stack spacing={1.5}>
-            {/* Color Picker Input */}
-            <Box>
-              <label
-                style={{
-                  fontSize: "0.875rem",
-                  fontWeight: 500,
-                  marginBottom: 8,
-                  display: "block",
-                }}
-              >
-                Pick a Color
-              </label>
-              <input
-                type="color"
-                onChange={(e) => applyTextColor(e.target.value)}
-                style={{
-                  width: "100%",
-                  height: 40,
-                  border: "1px solid #ddd",
-                  borderRadius: 4,
-                  cursor: "pointer",
+          <Stack
+            spacing={1}
+            sx={{
+              p: 1,
+              ".react-colorful__pointer ": {
+                width: 16,
+                height: 16,
+              },
+              ".react-colorful__saturation": {
+                mb: 1,
+                borderRadius: "4px",
+              },
+              ".react-colorful__last-control": {
+                borderRadius: "4px",
+              },
+              ".react-colorful__hue-pointer": {
+                width: "4px",
+                borderRadius: "4px",
+                height: 24,
+                cursor: "col-resize",
+              },
+              ".react-colorful__saturation-pointer": {
+                cursor: "all-scroll",
+              },
+              input: {
+                padding: 1,
+                border: "1px solid",
+                borderColor: "grey.300",
+                borderRadius: "4px",
+                width: "100%",
+              },
+            }}
+          >
+            <HexColorPicker
+              color={previewColor}
+              onChange={(color) => {
+                setPreviewColor(color);
+              }}
+            />
+            <ColorSwatch
+              paletteColors={DEFAULT_PRESET_COLORS}
+              value={previewColor}
+              onChange={(color) => {
+                setPreviewColor(color);
+              }}
+            />
+            <Box pt={1}>
+              <HexColorInput
+                prefixed
+                color={previewColor}
+                onChange={(color) => {
+                  if (color && /^#[0-9A-Fa-f]{6}$/.test(color)) {
+                    setPreviewColor(color);
+                  }
                 }}
               />
             </Box>
 
-            {/* Common Colors */}
-            <Box>
-              <label
-                style={{
-                  fontSize: "0.875rem",
-                  fontWeight: 500,
-                  marginBottom: 8,
-                  display: "block",
-                }}
-              >
-                Common Colors
-              </label>
-              <Box
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(8, 1fr)",
-                  gap: 1,
-                }}
-              >
-                {[
-                  "#000000",
-                  "#333333",
-                  "#666666",
-                  "#999999",
-                  "#FF0000",
-                  "#00FF00",
-                  "#0000FF",
-                  "#FFFF00",
-                  "#FF00FF",
-                  "#00FFFF",
-                  "#FFA500",
-                  "#800080",
-                  "#008000",
-                  "#FFC0CB",
-                  "#A52A2A",
-                  "#808080",
-                ].map((color) => (
-                  <Box
-                    key={color}
-                    onClick={() => applyTextColor(color)}
-                    sx={{
-                      width: 24,
-                      height: 24,
-                      backgroundColor: color,
-                      border: "1px solid #ddd",
-                      borderRadius: 1,
-                      cursor: "pointer",
-                      "&:hover": {
-                        transform: "scale(1.1)",
-                        boxShadow: "0px 2px 4px rgba(0,0,0,0.2)",
-                      },
-                    }}
-                  />
-                ))}
-              </Box>
-            </Box>
-
-            {/* Custom Color Input */}
-            <Box component="form" onSubmit={handleCustomColorSubmit}>
-              <TextField
-                name="customColor"
-                label="Custom Color"
-                placeholder="Enter hex, rgb, or color name"
+            {/* Action Buttons */}
+            <Box
+              pt={1}
+              sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}
+            >
+              <Button
                 size="small"
-                fullWidth
-                sx={{ mb: 1 }}
-              />
-              <Box sx={{ fontSize: "0.75rem", color: "text.secondary" }}>
-                Examples: #FF0000, rgb(255,0,0), red
-              </Box>
+                variant="outlined"
+                onClick={handleColorCancel}
+                sx={{ minWidth: 60 }}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="small"
+                variant="contained"
+                onClick={handleColorConfirm}
+                sx={{ minWidth: 60 }}
+              >
+                OK
+              </Button>
             </Box>
           </Stack>
         </Menu>
