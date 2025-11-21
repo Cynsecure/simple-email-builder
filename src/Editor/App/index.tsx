@@ -1,16 +1,18 @@
 import React, { useEffect } from "react";
 import { v4 as uuid } from "uuid";
 
-import { Box, Stack, useTheme } from "@mui/material";
+import { Box, Stack, useTheme, useMediaQuery } from "@mui/material";
 
 import {
   resetDocument,
   useDocument,
   useInspectorDrawerOpen,
+  useSelectedBlockId,
 } from "../documents/editor/EditorContext";
 
 import InspectorDrawer, { INSPECTOR_DRAWER_WIDTH } from "./InspectorDrawer";
 import TemplatePanel from "./TemplatePanel";
+import BottomBar from "./MobileToolbars/BottomBar";
 import { Reader, renderToStaticMarkup } from "@usewaypoint/email-builder";
 import { EditorProps } from "../types";
 import html2canvas from "html2canvas";
@@ -73,7 +75,7 @@ function convertDocumentForReader(document: TEditorConfiguration) {
       // Calculate margin (configurable like padding)
       const baseMargin = { top: 4, bottom: 4, left: 8, right: 8 };
       let buttonMargin = baseMargin;
-      
+
       // Use container padding from block style as margin if available
       if (block.data.style?.padding) {
         const p = block.data.style.padding;
@@ -145,8 +147,12 @@ export default function Editor({
   onSnapshot,
   ...metadata
 }: EditorProps) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
   const inspectorDrawerOpen = useInspectorDrawerOpen();
   const document = useDocument();
+  const selectedBlockId = useSelectedBlockId();
 
   const marginRightTransition = useDrawerTransition(
     "margin-right",
@@ -155,6 +161,213 @@ export default function Editor({
 
   const [takingSnapshot, setTakingSnapshot] = React.useState(false);
   const snapshotRef = React.useRef<HTMLDivElement>(null);
+  const [isMobilePopupOpen, setIsMobilePopupOpen] = React.useState(false);
+  const mainContentRef = React.useRef<HTMLDivElement | null>(null);
+
+  // Handle mobile popup state changes
+  const handleMobilePopupStateChange = (isOpen: boolean) => {
+    setIsMobilePopupOpen(isOpen);
+
+    // Clean up document height when popup closes
+    if (!isOpen) {
+      window.document.body.style.minHeight = "auto";
+    }
+  };
+
+  // Split view logic: scroll text editors into view when popup is open
+  useEffect(() => {
+    if (!isMobile) {
+      return;
+    }
+
+    const handleTextEditorScroll = () => {
+      // Only scroll when popup is open
+      if (!isMobilePopupOpen) {
+        return;
+      }
+
+      // Find any active text editor (contentEditable indicating edit mode)
+      const activeEditor = window.document.querySelector(
+        '[contenteditable="true"]'
+      ) as HTMLElement;
+
+      if (activeEditor) {
+        // Calculate the popup height (50vh) and toolbar height (60px)
+        const popupHeight = window.innerHeight * 0.5;
+        const toolbarHeight = 60;
+        const totalBottomSpace = popupHeight + toolbarHeight;
+
+        // Get editor position relative to viewport
+        const editorRect = activeEditor.getBoundingClientRect();
+        const editorBottom = editorRect.bottom;
+
+        // Calculate available space above the popup
+        const availableSpace = window.innerHeight - totalBottomSpace;
+
+        // If editor extends into or below the popup area, scroll it up
+        if (editorBottom > availableSpace) {
+          // Calculate scroll needed for text editor with toolbar space
+          const neededScroll = editorBottom - availableSpace + 20; // 20px for toolbar breathing room
+
+          if (neededScroll > 0) {
+            // Expand document for scrolling (will be cleaned up when popup closes)
+            const newBodyHeight = Math.max(
+              window.document.body.scrollHeight,
+              window.innerHeight + neededScroll + 250 // Extra buffer for text editor
+            );
+
+            window.document.body.style.minHeight = newBodyHeight + "px";
+
+            // Perform the scroll
+            window.scrollBy({
+              top: neededScroll,
+              behavior: "smooth",
+            });
+          }
+        }
+      }
+    };
+
+    // Immediate check when popup state changes
+    if (isMobilePopupOpen) {
+      setTimeout(handleTextEditorScroll, 200); // Delay to ensure popup is rendered
+    }
+
+    // Listen for text editor focus events
+    const observers: MutationObserver[] = [];
+
+    // Check for new contentEditable elements being added/modified
+    const observer = new MutationObserver((mutations) => {
+      let shouldCheck = false;
+
+      mutations.forEach((mutation) => {
+        if (
+          mutation.type === "attributes" &&
+          mutation.attributeName === "contenteditable"
+        ) {
+          const target = mutation.target as HTMLElement;
+          if (target.contentEditable === "true") {
+            shouldCheck = true;
+          }
+        }
+
+        if (mutation.type === "childList") {
+          mutation.addedNodes.forEach((node) => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              const element = node as HTMLElement;
+              const editableElements = element.querySelectorAll(
+                '[contenteditable="true"]'
+              );
+              if (
+                editableElements.length > 0 ||
+                element.contentEditable === "true"
+              ) {
+                shouldCheck = true;
+              }
+            }
+          });
+        }
+      });
+
+      if (shouldCheck) {
+        setTimeout(handleTextEditorScroll, 200);
+      }
+    });
+
+    observer.observe(window.document.body, {
+      attributes: true,
+      childList: true,
+      subtree: true,
+      attributeFilter: ["contenteditable"],
+    });
+
+    observers.push(observer);
+
+    // Also handle immediate focus events
+    const handleFocusIn = (event: FocusEvent) => {
+      const target = event.target as HTMLElement;
+      if (target && target.contentEditable === "true") {
+        setTimeout(handleTextEditorScroll, 200);
+      }
+    };
+
+    // Handle click events on text elements to catch when they enter edit mode
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      // Check if clicked element or its parent might be a text block
+      if (
+        target &&
+        (target.textContent || target.closest('[data-block-type="Text"]'))
+      ) {
+        setTimeout(handleTextEditorScroll, 300); // Longer delay for click->edit transition
+      }
+    };
+
+    window.document.addEventListener("focusin", handleFocusIn);
+    window.document.addEventListener("click", handleClick);
+
+    return () => {
+      observers.forEach((obs) => obs.disconnect());
+      window.document.removeEventListener("focusin", handleFocusIn);
+      window.document.removeEventListener("click", handleClick);
+    };
+  }, [isMobile, isMobilePopupOpen]);
+
+  // Additional effect to handle block selection on mobile
+  useEffect(() => {
+    if (!isMobile || !isMobilePopupOpen || !selectedBlockId) {
+      return;
+    }
+
+    // When a block is selected and popup is open, check if we need to scroll
+    const checkScrollForSelectedBlock = () => {
+      // Find the selected block using the data attribute
+      const selectedBlockElement = window.document.querySelector(
+        `[data-block-id="${selectedBlockId}"]`
+      ) as HTMLElement;
+
+      if (selectedBlockElement) {
+        // Calculate popup dimensions
+        const popupHeight = window.innerHeight * 0.5;
+        const toolbarHeight = 60;
+        const totalBottomSpace = popupHeight + toolbarHeight;
+
+        // Get block position
+        const blockRect = selectedBlockElement.getBoundingClientRect();
+        const blockBottom = blockRect.bottom;
+
+        // Calculate available space above popup
+        const availableSpace = window.innerHeight - totalBottomSpace;
+
+        // If block extends into popup area, scroll it up
+        if (blockBottom > availableSpace) {
+          // Calculate how much scroll is needed
+          const neededScroll = blockBottom - availableSpace + 20; // 20px breathing room
+
+          if (neededScroll > 0) {
+            // Add scrollable space to document body (will be cleaned up when popup closes)
+            const newBodyHeight = Math.max(
+              window.document.body.scrollHeight,
+              window.innerHeight + neededScroll + 200 // Extra buffer
+            );
+
+            window.document.body.style.minHeight = newBodyHeight + "px";
+
+            // Perform the scroll
+            window.scrollBy({
+              top: neededScroll,
+              behavior: "smooth",
+            });
+          }
+        }
+      }
+    };
+
+    // Delay to ensure block selection UI is updated
+    const timeoutId = setTimeout(checkScrollForSelectedBlock, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [isMobile, isMobilePopupOpen, selectedBlockId]);
 
   const triggerSnapshot = () => {
     if (!onSnapshot) return;
@@ -218,16 +431,34 @@ export default function Editor({
 
   return (
     <>
-      <InspectorDrawer metadata={metadata} onFileUpload={onFileUpload} />
+      {/* Desktop Inspector Drawer - Hidden on mobile */}
+      {!isMobile && (
+        <InspectorDrawer metadata={metadata} onFileUpload={onFileUpload} />
+      )}
 
       <Stack
+        ref={mainContentRef}
         sx={{
-          marginRight: inspectorDrawerOpen ? `${INSPECTOR_DRAWER_WIDTH}px` : 0,
+          marginRight:
+            !isMobile && inspectorDrawerOpen
+              ? `${INSPECTOR_DRAWER_WIDTH}px`
+              : 0,
+          marginBottom: isMobile ? "100px" : 0, // Updated from 80px to 100px to match new bottom bar height
+          padding: isMobile ? "8px" : 0, // Add some padding on mobile
           transition: [marginRightTransition].join(", "),
         }}
       >
         <TemplatePanel />
       </Stack>
+
+      {/* Mobile Bottom Bar - Only on mobile */}
+      {isMobile && (
+        <BottomBar
+          onFileUpload={onFileUpload}
+          onPanelStateChange={handleMobilePopupStateChange}
+        />
+      )}
+
       <Box
         sx={{
           position: "fixed",

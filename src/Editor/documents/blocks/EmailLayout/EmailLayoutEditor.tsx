@@ -41,7 +41,7 @@ export default function EmailLayoutEditor(props: EmailLayoutProps) {
 
   // Default responsive widths
   const defaultMaxWidths = {
-    sm: props.maxWidth?.sm ?? 350, // Mobile
+    sm: props.maxWidth?.sm ?? "calc(100vw - 32px)", // Mobile - full width minus padding
     md: props.maxWidth?.md ?? 480, // Tablet
     lg: props.maxWidth?.lg ?? 600, // Desktop
   };
@@ -49,7 +49,8 @@ export default function EmailLayoutEditor(props: EmailLayoutProps) {
   // Create CSS for responsive max-width
   const responsiveStyles = `
     .email-layout-table {
-      max-width: ${defaultMaxWidths.sm}px;
+      max-width: ${typeof defaultMaxWidths.sm === "string" ? defaultMaxWidths.sm : defaultMaxWidths.sm + "px"};
+      width: 100%;
     }
     @media (min-width: 768px) {
       .email-layout-table {
