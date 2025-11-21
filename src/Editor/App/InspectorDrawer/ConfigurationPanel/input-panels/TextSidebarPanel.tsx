@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { Box, Typography, Paper } from "@mui/material";
 
 import BaseSidebarPanel from "./helpers/BaseSidebarPanel";
 import MultiStylePropertyPanel from "./helpers/style-inputs/MultiStylePropertyPanel";
