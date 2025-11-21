@@ -31,7 +31,11 @@ import {
 } from "@mui/icons-material";
 
 import { useCurrentBlockId } from "../../editor/EditorBlock";
-import { setDocument, useDocument } from "../../editor/EditorContext";
+import {
+  setDocument,
+  useDocument,
+  useSelectedBlockId,
+} from "../../editor/EditorContext";
 import { FONT_FAMILIES } from "../helpers/fontFamily";
 
 import { TextProps } from "./TextPropsSchema";
@@ -144,6 +148,7 @@ const ColorSwatch = ({
 export default function TextEditor({ style, props }: TextProps) {
   const editorDocument = useDocument();
   const currentBlockId = useCurrentBlockId();
+  const selectedBlockId = useSelectedBlockId();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("lg"));
   const editorRef = useRef<HTMLDivElement>(null);
@@ -216,6 +221,22 @@ export default function TextEditor({ style, props }: TextProps) {
       }
     }
   };
+
+  // Exit editing mode when another block is selected
+  useEffect(() => {
+    if (isEditing && selectedBlockId && selectedBlockId !== currentBlockId) {
+      // Close any open menus
+      setFontFamilyMenuAnchor(null);
+      setFontSizeMenuAnchor(null);
+      setColorPickerAnchor(null);
+      setVariableMenuAnchor(null);
+      setMoreOptionsMenuAnchor(null);
+
+      // Update content and exit editing mode
+      updateContent();
+      setIsEditing(false);
+    }
+  }, [selectedBlockId, currentBlockId, isEditing]);
 
   const handleFocus = () => {
     setIsEditing(true);

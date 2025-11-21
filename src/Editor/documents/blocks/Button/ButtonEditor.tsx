@@ -2,7 +2,11 @@ import React, { useRef, useEffect, useState } from "react";
 import { Box } from "@mui/material";
 
 import { useCurrentBlockId } from "../../editor/EditorBlock";
-import { setDocument, useDocument } from "../../editor/EditorContext";
+import {
+  setDocument,
+  useDocument,
+  useSelectedBlockId,
+} from "../../editor/EditorContext";
 
 import { ButtonProps, ButtonPropsDefaults } from "./ButtonPropsSchema";
 
@@ -67,6 +71,7 @@ const getButtonStyles = (
 export default function ButtonEditor({ style, props }: ButtonProps) {
   const editorDocument = useDocument();
   const currentBlockId = useCurrentBlockId();
+  const selectedBlockId = useSelectedBlockId();
   const editorRef = useRef<HTMLDivElement>(null);
   const [isEditing, setIsEditing] = useState(false);
   const lastContentRef = useRef<string>("");
@@ -121,6 +126,15 @@ export default function ButtonEditor({ style, props }: ButtonProps) {
       }
     }
   };
+
+  // Exit editing mode when another block is selected
+  useEffect(() => {
+    if (isEditing && selectedBlockId && selectedBlockId !== currentBlockId) {
+      // Update content and exit editing mode
+      updateContent();
+      setIsEditing(false);
+    }
+  }, [selectedBlockId, currentBlockId, isEditing]);
 
   const handleFocus = () => {
     setIsEditing(true);

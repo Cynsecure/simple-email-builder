@@ -19,7 +19,11 @@ import {
 } from "@mui/icons-material";
 
 import { useCurrentBlockId } from "../../editor/EditorBlock";
-import { setDocument, useDocument } from "../../editor/EditorContext";
+import {
+  setDocument,
+  useDocument,
+  useSelectedBlockId,
+} from "../../editor/EditorContext";
 
 import { HeadingProps, HeadingPropsDefaults } from "./HeadingPropsSchema";
 
@@ -46,6 +50,7 @@ const getHeadingFontSize = (level: string) => {
 export default function HeadingEditor({ style, props }: HeadingProps) {
   const editorDocument = useDocument();
   const currentBlockId = useCurrentBlockId();
+  const selectedBlockId = useSelectedBlockId();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("lg"));
   const editorRef = useRef<HTMLDivElement>(null);
@@ -101,6 +106,19 @@ export default function HeadingEditor({ style, props }: HeadingProps) {
       }
     }
   };
+
+  // Exit editing mode when another block is selected
+  useEffect(() => {
+    if (isEditing && selectedBlockId && selectedBlockId !== currentBlockId) {
+      // Close any open menus
+      setVariableMenuAnchor(null);
+      setMoreOptionsMenuAnchor(null);
+
+      // Update content and exit editing mode
+      updateContent();
+      setIsEditing(false);
+    }
+  }, [selectedBlockId, currentBlockId, isEditing]);
 
   const handleFocus = () => {
     setIsEditing(true);
