@@ -106,7 +106,7 @@ function convertDocumentForReader(document: TEditorConfiguration) {
       // Calculate margin (configurable like padding)
       const baseMargin = { top: 4, bottom: 4, left: 8, right: 8 };
       let buttonMargin = baseMargin;
-      
+
       // Use container padding from block style as margin if available
       if (block.data.style?.padding) {
         const p = block.data.style.padding;
@@ -200,7 +200,6 @@ export default function TemplatePanel() {
   };
 
   const renderMainPanel = () => {
-    console.log("Doc", document);
     switch (selectedMainTab) {
       case "editor":
         return (
@@ -224,14 +223,17 @@ export default function TemplatePanel() {
     <>
       <Stack
         sx={{
-          height: 49,
+          height: { xs: 80, md: 49 }, // 80px on mobile, 49px on desktop
           borderBottom: 1,
           borderColor: "divider",
           backgroundColor: "white",
-          position: "sticky",
+          position: { xs: "fixed", md: "sticky" }, // Fixed on mobile, sticky on desktop
           top: 0,
+          left: { xs: 0, md: "auto" }, // Full width on mobile
+          right: { xs: 0, md: "auto" }, // Full width on mobile
           zIndex: "appBar",
           px: 1,
+          py: { xs: 2, md: 0 }, // Padding only on mobile
         }}
         direction="row"
         justifyContent="space-between"
@@ -244,18 +246,25 @@ export default function TemplatePanel() {
           width="100%"
           justifyContent="space-between"
           alignItems="center"
+          sx={{
+            px: { xs: 1, sm: 2 }, // Less padding on mobile
+          }}
         >
-          <Stack direction="row" spacing={2}>
+          <Stack direction="row" spacing={{ xs: 1, sm: 2 }}>
             <MainTabsGroup />
           </Stack>
-          <Stack direction="row" spacing={2}>
+          <Stack direction="row" spacing={{ xs: 1, sm: 2 }}>
             <Button
               onClick={generateHtml}
               size="small"
               startIcon={<DownloadOutlined fontSize="small" />}
               variant="outlined"
+              sx={{
+                minWidth: { xs: "auto", sm: "auto" },
+                px: { xs: 1, sm: 2 },
+              }}
             >
-              Export
+              <Box sx={{ display: { xs: "none", sm: "block" } }}>Export</Box>
             </Button>
             <ToggleButtonGroup
               value={selectedScreenSize}
@@ -280,9 +289,13 @@ export default function TemplatePanel() {
       </Stack>
       <Box
         sx={{
-          height: "calc(100vh - 49px)",
+          height: {
+            xs: "100vh", // Full height on mobile (fixed header doesn't take space)
+            md: "calc(100vh - 49px)", // Desktop: subtract 49px toolbar height
+          },
+          pt: { xs: "80px", md: 0 }, // Add top padding on mobile for fixed header
           overflow: "auto",
-          minWidth: 370,
+          minWidth: { xs: "100%", sm: 370 }, // Full width on mobile, 370px minimum on larger screens
         }}
       >
         {renderMainPanel()}
