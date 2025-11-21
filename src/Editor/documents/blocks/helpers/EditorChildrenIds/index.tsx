@@ -1,9 +1,10 @@
-import React, { Fragment } from 'react';
+import React, { Fragment } from "react";
 
-import { TEditorBlock } from '../../../editor/core';
-import EditorBlock from '../../../editor/EditorBlock';
+import { TEditorBlock } from "../../../editor/core";
+import EditorBlock from "../../../editor/EditorBlock";
+import { useSelectedBlockId } from "../../../editor/EditorContext";
 
-import AddBlockButton from './AddBlockMenu';
+import AddBlockButton from "./AddBlockMenu";
 
 export type EditorChildrenChange = {
   blockId: string;
@@ -19,7 +20,12 @@ export type EditorChildrenIdsProps = {
   childrenIds: string[] | null | undefined;
   onChange: (val: EditorChildrenChange) => void;
 };
-export default function EditorChildrenIds({ childrenIds, onChange }: EditorChildrenIdsProps) {
+export default function EditorChildrenIds({
+  childrenIds,
+  onChange,
+}: EditorChildrenIdsProps) {
+  const selectedBlockId = useSelectedBlockId();
+
   const appendBlock = (block: TEditorBlock) => {
     const blockId = generateId();
     return onChange({
@@ -48,11 +54,23 @@ export default function EditorChildrenIds({ childrenIds, onChange }: EditorChild
     <>
       {childrenIds.map((childId, i) => (
         <Fragment key={childId}>
-          <AddBlockButton onSelect={(block) => insertBlock(block, i)} />
+          <AddBlockButton
+            onSelect={(block) => insertBlock(block, i)}
+            isAfterSelectedBlock={
+              i > 0 && selectedBlockId === childrenIds[i - 1]
+            } // Show after the previous block if it's selected
+            isBeforeSelectedBlock={selectedBlockId === childId} // Show before this block if it's selected
+          />
           <EditorBlock id={childId} />
         </Fragment>
       ))}
-      <AddBlockButton onSelect={appendBlock} />
+      <AddBlockButton
+        onSelect={appendBlock}
+        isLastBlock
+        isAfterSelectedBlock={
+          selectedBlockId === childrenIds[childrenIds.length - 1]
+        } // Also show if the last block is selected
+      />
     </>
   );
 }
