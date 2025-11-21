@@ -63,9 +63,22 @@ export default function CustomButtonSidebarPanel({
       <RadioGroupInput
         label="Variant"
         defaultValue={variant}
-        onChange={(variant) =>
-          updateData({ ...data, props: { ...data.props, variant } })
-        }
+        onChange={(variant) => {
+          const updatedStyle = { ...data.style };
+
+          // Update text color based on variant
+          if (variant === "bordered") {
+            updatedStyle.color = "#000000"; // Black text for secondary
+          } else if (variant === "fill") {
+            updatedStyle.color = "#ffffff"; // White text for primary
+          }
+
+          updateData({
+            ...data,
+            props: { ...data.props, variant },
+            style: updatedStyle,
+          });
+        }}
       >
         <ToggleButton value="fill">Primary</ToggleButton>
         <ToggleButton value="bordered">Secondary</ToggleButton>
