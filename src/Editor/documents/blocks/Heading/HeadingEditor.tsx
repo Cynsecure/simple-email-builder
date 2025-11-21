@@ -7,12 +7,15 @@ import {
   Divider,
   Menu,
   MenuItem,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import {
   FormatBold,
   FormatItalic,
   FormatUnderlined,
   Person as PersonIcon,
+  MoreHoriz,
 } from "@mui/icons-material";
 
 import { useCurrentBlockId } from "../../editor/EditorBlock";
@@ -43,6 +46,8 @@ const getHeadingFontSize = (level: string) => {
 export default function HeadingEditor({ style, props }: HeadingProps) {
   const editorDocument = useDocument();
   const currentBlockId = useCurrentBlockId();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("lg"));
   const editorRef = useRef<HTMLDivElement>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [toolbarKey, setToolbarKey] = useState(0);
@@ -50,6 +55,9 @@ export default function HeadingEditor({ style, props }: HeadingProps) {
   const [variableMenuAnchor, setVariableMenuAnchor] =
     useState<null | HTMLElement>(null);
   const variableButtonRef = useRef<HTMLButtonElement>(null);
+  const [moreOptionsMenuAnchor, setMoreOptionsMenuAnchor] =
+    useState<null | HTMLElement>(null);
+  const moreOptionsButtonRef = useRef<HTMLButtonElement>(null);
   const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const content = props?.text || HeadingPropsDefaults.text;
@@ -144,6 +152,10 @@ export default function HeadingEditor({ style, props }: HeadingProps) {
 
   const handleVariableMenuClose = () => {
     setVariableMenuAnchor(null);
+  };
+
+  const handleMoreOptionsMenuClose = () => {
+    setMoreOptionsMenuAnchor(null);
   };
 
   const insertVariable = (variableType: string) => {
@@ -244,7 +256,14 @@ export default function HeadingEditor({ style, props }: HeadingProps) {
 
   if (isEditing) {
     return (
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          gap: isMobile ? 0 : 1,
+          position: "relative",
+        }}
+      >
         {/* Heading Editor */}
         <div
           key={currentBlockId}
@@ -274,20 +293,33 @@ export default function HeadingEditor({ style, props }: HeadingProps) {
           }}
         />
 
-        {/* Simplified Toolbar for Headings */}
+        {/* Toolbar for Headings - Floating on mobile, block on desktop */}
         <Paper
           key={toolbarKey}
-          elevation={2}
+          elevation={isMobile ? 4 : 2}
           onMouseDown={(e) => e.preventDefault()}
+          onClick={(ev) => ev.stopPropagation()}
           sx={{
             p: 1,
             display: "flex",
             gap: 0.5,
             alignItems: "center",
             background: "white",
-            borderRadius: 1,
+            borderRadius: isMobile ? 20 : 1,
+            ...(isMobile && {
+              position: "absolute",
+              bottom: { xs: -60, sm: -50, md: -45 },
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: "fab",
+              boxShadow: 2,
+              paddingX: 1,
+              paddingY: 0.5,
+              maxWidth: { xs: "180px", sm: "220px", md: "250px" },
+            }),
           }}
         >
+          {/* Essential tools always visible */}
           <ToolbarButton command="bold" icon={<FormatBold />} tooltip="Bold" />
           <ToolbarButton
             command="italic"
@@ -300,9 +332,15 @@ export default function HeadingEditor({ style, props }: HeadingProps) {
             tooltip="Underline"
           />
 
-          <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
-
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+          {/* Show variable button on lg+ screens */}
+          <Box
+            sx={{
+              display: { xs: "none", lg: "flex" },
+              alignItems: "center",
+              gap: 0.5,
+            }}
+          >
+            <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
             <Tooltip title="Insert Variable">
               <IconButton
                 ref={variableButtonRef}
@@ -340,6 +378,42 @@ export default function HeadingEditor({ style, props }: HeadingProps) {
             >
               Variable
             </Box>
+          </Box>
+
+          {/* More options menu for xs, sm, md screens */}
+          <Box
+            sx={{ display: { xs: "flex", lg: "none" }, alignItems: "center" }}
+          >
+            <Tooltip title="More Options">
+              <IconButton
+                ref={moreOptionsButtonRef}
+                size="small"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                }}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setMoreOptionsMenuAnchor(moreOptionsButtonRef.current);
+                }}
+                sx={{
+                  minWidth: 32,
+                  height: 32,
+                  backgroundColor: moreOptionsMenuAnchor
+                    ? "rgba(25, 118, 210, 0.12)"
+                    : "transparent",
+                  border: moreOptionsMenuAnchor
+                    ? "1px solid rgba(25, 118, 210, 0.5)"
+                    : "1px solid transparent",
+                  "&:hover": {
+                    backgroundColor: "rgba(0, 0, 0, 0.04)",
+                    boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.2)",
+                  },
+                }}
+              >
+                <MoreHoriz />
+              </IconButton>
+            </Tooltip>
           </Box>
         </Paper>
 
@@ -386,6 +460,44 @@ export default function HeadingEditor({ style, props }: HeadingProps) {
             onMouseDown={(e) => e.preventDefault()}
           >
             Full Name
+          </MenuItem>
+        </Menu>
+
+        {/* More Options Menu - Only shown on xs screens */}
+        <Menu
+          anchorEl={moreOptionsMenuAnchor}
+          open={Boolean(moreOptionsMenuAnchor)}
+          onClose={handleMoreOptionsMenuClose}
+          anchorOrigin={{
+            vertical: "bottom",
+            horizontal: "center",
+          }}
+          transformOrigin={{
+            vertical: "top",
+            horizontal: "center",
+          }}
+          sx={{ zIndex: 2000 }}
+          disableAutoFocus
+          disableEnforceFocus
+          disableRestoreFocus
+          slotProps={{
+            paper: {
+              style: {
+                maxHeight: 200,
+                minWidth: 160,
+              },
+            },
+          }}
+        >
+          <MenuItem
+            onClick={() => {
+              handleMoreOptionsMenuClose();
+              setVariableMenuAnchor(moreOptionsButtonRef.current);
+            }}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <PersonIcon sx={{ mr: 1 }} />
+            Insert Variable
           </MenuItem>
         </Menu>
       </Box>

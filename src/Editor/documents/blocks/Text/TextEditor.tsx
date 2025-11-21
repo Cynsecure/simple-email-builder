@@ -10,6 +10,8 @@ import {
   MenuItem,
   Stack,
   Button,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import {
   FormatBold,
@@ -25,6 +27,7 @@ import {
   FontDownload,
   FormatSize,
   KeyboardArrowDown,
+  MoreHoriz,
 } from "@mui/icons-material";
 
 import { useCurrentBlockId } from "../../editor/EditorBlock";
@@ -141,6 +144,8 @@ const ColorSwatch = ({
 export default function TextEditor({ style, props }: TextProps) {
   const editorDocument = useDocument();
   const currentBlockId = useCurrentBlockId();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("lg"));
   const editorRef = useRef<HTMLDivElement>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [toolbarKey, setToolbarKey] = useState(0); // Force toolbar re-render for active states
@@ -161,6 +166,9 @@ export default function TextEditor({ style, props }: TextProps) {
     useState<null | HTMLElement>(null);
   const fontSizeButtonRef = useRef<HTMLButtonElement>(null);
   const colorPickerButtonRef = useRef<HTMLButtonElement>(null);
+  const [moreOptionsMenuAnchor, setMoreOptionsMenuAnchor] =
+    useState<null | HTMLElement>(null);
+  const moreOptionsButtonRef = useRef<HTMLButtonElement>(null);
 
   const content = props?.richText || "";
 
@@ -240,6 +248,17 @@ export default function TextEditor({ style, props }: TextProps) {
   };
 
   const handleBlur = (e: React.FocusEvent) => {
+    // Don't blur if any menus are open - let them handle the interaction
+    if (
+      colorPickerAnchor ||
+      fontFamilyMenuAnchor ||
+      fontSizeMenuAnchor ||
+      variableMenuAnchor ||
+      moreOptionsMenuAnchor
+    ) {
+      return;
+    }
+
     // Don't blur if clicking on a toolbar button or menu
     const relatedTarget = e.relatedTarget as HTMLElement;
     if (
@@ -262,6 +281,7 @@ export default function TextEditor({ style, props }: TextProps) {
     setFontSizeMenuAnchor(null);
     setColorPickerAnchor(null);
     setVariableMenuAnchor(null);
+    setMoreOptionsMenuAnchor(null);
 
     setIsEditing(false);
     updateContent();
@@ -448,13 +468,24 @@ export default function TextEditor({ style, props }: TextProps) {
       editorRef.current.focus();
       executeCommand("foreColor", color);
 
-      // Clear the selection after applying color
+      // After applying color, position cursor at the end of the selection
       setTimeout(() => {
-        const selection = window.getSelection();
-        if (selection) {
-          selection.removeAllRanges();
+        if (savedSelection && editorRef.current) {
+          const selection = window.getSelection();
+          if (selection) {
+            // Create a new range at the end of the previously selected text
+            const range = document.createRange();
+            range.setStart(
+              savedSelection.endContainer,
+              savedSelection.endOffset
+            );
+            range.collapse(true); // Collapse to start (which is the end position)
+
+            selection.removeAllRanges();
+            selection.addRange(range);
+          }
         }
-      }, 50);
+      }, 20);
 
       if (shouldCloseMenu) {
         handleColorPickerClose();
@@ -463,13 +494,20 @@ export default function TextEditor({ style, props }: TextProps) {
       // Update content to reflect the change
       setTimeout(() => {
         updateContent();
-      }, 10);
+      }, 30);
     }
   };
 
   const handleColorConfirm = () => {
     // Apply the preview color to the text
     applyTextColor(previewColor, true);
+
+    // Refocus the editor to keep it in editing mode
+    setTimeout(() => {
+      if (editorRef.current) {
+        editorRef.current.focus();
+      }
+    }, 50);
   };
 
   const handleColorCancel = () => {
@@ -480,6 +518,10 @@ export default function TextEditor({ style, props }: TextProps) {
 
   const handleVariableMenuClose = () => {
     setVariableMenuAnchor(null);
+  };
+
+  const handleMoreOptionsMenuClose = () => {
+    setMoreOptionsMenuAnchor(null);
   };
 
   const handleFontFamilyMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -654,7 +696,14 @@ export default function TextEditor({ style, props }: TextProps) {
 
   if (isEditing) {
     return (
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          gap: isMobile ? 0 : 1,
+          position: "relative",
+        }}
+      >
         {/* Rich Text Editor */}
         <div
           key={`${currentBlockId}-edit-${style?.padding ? `${style.padding.top}-${style.padding.bottom}-${style.padding.left}-${style.padding.right}` : "default"}`} // Force re-render when switching blocks or padding changes
@@ -688,11 +737,12 @@ export default function TextEditor({ style, props }: TextProps) {
           }}
         />
 
-        {/* Rich Text Toolbar */}
+        {/* Rich Text Toolbar - Floating on mobile, block on desktop */}
         <Paper
           key={toolbarKey}
-          elevation={2}
+          elevation={isMobile ? 4 : 2}
           onMouseDown={(e) => e.preventDefault()}
+          onClick={(ev) => ev.stopPropagation()}
           sx={{
             p: 1,
             display: "flex",
@@ -700,10 +750,22 @@ export default function TextEditor({ style, props }: TextProps) {
             gap: 0.5,
             alignItems: "center",
             background: "white",
-            borderRadius: 1,
+            borderRadius: isMobile ? 20 : 1,
+            ...(isMobile && {
+              position: "absolute",
+              bottom: { xs: -60, sm: -50, md: -45 },
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: "fab",
+              boxShadow: 2,
+              paddingX: 1,
+              paddingY: 0.5,
+              maxWidth: { xs: "200px", sm: "250px", md: "300px" },
+              overflowX: "auto",
+            }),
           }}
         >
-          {/* First row - Basic formatting */}
+          {/* Essential tools always visible */}
           <Box
             sx={{
               display: "flex",
@@ -727,190 +789,230 @@ export default function TextEditor({ style, props }: TextProps) {
               icon={<FormatUnderlined />}
               tooltip="Underline"
             />
-            <ToolbarButton
-              command="strikeThrough"
-              icon={<FormatStrikethrough />}
-              tooltip="Strikethrough"
-            />
 
-            <ToolbarButton
-              command="superscript"
-              icon={<Superscript />}
-              tooltip="Superscript"
-            />
-            <ToolbarButton
-              command="subscript"
-              icon={<Subscript />}
-              tooltip="Subscript"
-            />
+            {/* Show more tools on lg+ screens */}
+            <Box
+              sx={{
+                display: { xs: "none", lg: "flex" },
+                gap: 0.5,
+                alignItems: "center",
+              }}
+            >
+              <ToolbarButton
+                command="strikeThrough"
+                icon={<FormatStrikethrough />}
+                tooltip="Strikethrough"
+              />
+              <ToolbarButton
+                command="superscript"
+                icon={<Superscript />}
+                tooltip="Superscript"
+              />
+              <ToolbarButton
+                command="subscript"
+                icon={<Subscript />}
+                tooltip="Subscript"
+              />
 
-            <Divider
-              orientation="vertical"
-              flexItem
-              sx={{ mx: 0.5, height: 24 }}
-            />
+              <Divider
+                orientation="vertical"
+                flexItem
+                sx={{ mx: 0.5, height: 24 }}
+              />
 
-            <Tooltip title="Font Family">
-              <IconButton
-                ref={fontFamilyButtonRef}
-                size="small"
-                onMouseDown={(e) => {
-                  e.preventDefault(); // Prevent focus loss
-                }}
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  handleFontFamilyMenuOpen(event);
-                }}
-                sx={{
-                  width: 32,
-                  height: 32,
-                  backgroundColor: fontFamilyMenuAnchor
-                    ? "rgba(25, 118, 210, 0.12)"
-                    : "transparent",
-                  border: fontFamilyMenuAnchor
-                    ? "1px solid rgba(25, 118, 210, 0.5)"
-                    : "1px solid transparent",
-                  "&:hover": {
-                    backgroundColor: "rgba(0, 0, 0, 0.04)",
-                    boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.2)",
-                  },
-                }}
-              >
-                <FontDownload />
-              </IconButton>
-            </Tooltip>
-            <Tooltip title="Font Size">
-              <IconButton
-                ref={fontSizeButtonRef}
-                size="small"
-                onMouseDown={(e) => {
-                  e.preventDefault(); // Prevent focus loss
-                }}
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  handleFontSizeMenuOpen(event);
-                }}
-                sx={{
-                  width: 32,
-                  height: 32,
-                  backgroundColor: fontSizeMenuAnchor
-                    ? "rgba(25, 118, 210, 0.12)"
-                    : "transparent",
-                  border: fontSizeMenuAnchor
-                    ? "1px solid rgba(25, 118, 210, 0.5)"
-                    : "1px solid transparent",
-                  "&:hover": {
-                    backgroundColor: "rgba(0, 0, 0, 0.04)",
-                    boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.2)",
-                  },
-                }}
-              >
-                <FormatSize />
-              </IconButton>
-            </Tooltip>
+              <ToolbarButton
+                command="insertUnorderedList"
+                icon={<FormatListBulleted />}
+                tooltip="Bullet List"
+              />
+              <ToolbarButton
+                command="insertOrderedList"
+                icon={<FormatListNumbered />}
+                tooltip="Numbered List"
+              />
 
-            <Tooltip title="Text Color">
-              <IconButton
-                ref={colorPickerButtonRef}
-                size="small"
-                onMouseDown={(e) => {
-                  e.preventDefault(); // Prevent focus loss
-                }}
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  handleColorPickerOpen(event);
-                }}
-                sx={{
-                  width: 32,
-                  height: 32,
-                  backgroundColor: colorPickerAnchor
-                    ? "rgba(25, 118, 210, 0.12)"
-                    : "transparent",
-                  border: colorPickerAnchor
-                    ? "1px solid rgba(25, 118, 210, 0.5)"
-                    : "1px solid transparent",
-                  "&:hover": {
-                    backgroundColor: "rgba(0, 0, 0, 0.04)",
-                    boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.2)",
-                  },
-                }}
-              >
-                <FormatColorText />
-              </IconButton>
-            </Tooltip>
-          </Box>
+              <Divider
+                orientation="vertical"
+                flexItem
+                sx={{ mx: 0.5, height: 24 }}
+              />
 
-          {/* Second row - Lists, links, and advanced features */}
-          <Box
-            sx={{
-              display: "flex",
-              gap: 0.5,
-              alignItems: "center",
-              width: { xs: "100%", sm: "auto" }, // Full width on mobile to force wrap
-              justifyContent: { xs: "flex-start", sm: "flex-start" },
-            }}
-          >
-            <ToolbarButton
-              command="insertUnorderedList"
-              icon={<FormatListBulleted />}
-              tooltip="Bullet List"
-            />
-            <ToolbarButton
-              command="insertOrderedList"
-              icon={<FormatListNumbered />}
-              tooltip="Numbered List"
-            />
+              <Tooltip title="Font Family">
+                <IconButton
+                  ref={fontFamilyButtonRef}
+                  size="small"
+                  onMouseDown={(e) => {
+                    e.preventDefault(); // Prevent focus loss
+                  }}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleFontFamilyMenuOpen(event);
+                  }}
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    backgroundColor: fontFamilyMenuAnchor
+                      ? "rgba(25, 118, 210, 0.12)"
+                      : "transparent",
+                    border: fontFamilyMenuAnchor
+                      ? "1px solid rgba(25, 118, 210, 0.5)"
+                      : "1px solid transparent",
+                    "&:hover": {
+                      backgroundColor: "rgba(0, 0, 0, 0.04)",
+                      boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.2)",
+                    },
+                  }}
+                >
+                  <FontDownload />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Font Size">
+                <IconButton
+                  ref={fontSizeButtonRef}
+                  size="small"
+                  onMouseDown={(e) => {
+                    e.preventDefault(); // Prevent focus loss
+                  }}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleFontSizeMenuOpen(event);
+                  }}
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    backgroundColor: fontSizeMenuAnchor
+                      ? "rgba(25, 118, 210, 0.12)"
+                      : "transparent",
+                    border: fontSizeMenuAnchor
+                      ? "1px solid rgba(25, 118, 210, 0.5)"
+                      : "1px solid transparent",
+                    "&:hover": {
+                      backgroundColor: "rgba(0, 0, 0, 0.04)",
+                      boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.2)",
+                    },
+                  }}
+                >
+                  <FormatSize />
+                </IconButton>
+              </Tooltip>
 
-            <Divider
-              orientation="vertical"
-              flexItem
-              sx={{ mx: 0.5, height: 24 }}
-            />
+              <Tooltip title="Text Color">
+                <IconButton
+                  ref={colorPickerButtonRef}
+                  size="small"
+                  onMouseDown={(e) => {
+                    e.preventDefault(); // Prevent focus loss
+                  }}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    handleColorPickerOpen(event);
+                  }}
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    backgroundColor: colorPickerAnchor
+                      ? "rgba(25, 118, 210, 0.12)"
+                      : "transparent",
+                    border: colorPickerAnchor
+                      ? "1px solid rgba(25, 118, 210, 0.5)"
+                      : "1px solid transparent",
+                    "&:hover": {
+                      backgroundColor: "rgba(0, 0, 0, 0.04)",
+                      boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.2)",
+                    },
+                  }}
+                >
+                  <FormatColorText />
+                </IconButton>
+              </Tooltip>
 
-            <ToolbarButton
-              command="createLink"
-              icon={<LinkIcon />}
-              tooltip="Insert Link"
-              onClick={handleLinkClick}
-            />
+              <Divider
+                orientation="vertical"
+                flexItem
+                sx={{ mx: 0.5, height: 24 }}
+              />
 
-            <Tooltip title="Insert Variable">
-              <Button
-                ref={variableButtonRef}
-                size="small"
-                endIcon={<KeyboardArrowDown />}
-                onMouseDown={(e) => {
-                  e.preventDefault(); // Prevent focus loss
-                }}
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  // Always use the ref to ensure consistent positioning
-                  setVariableMenuAnchor(variableButtonRef.current);
-                }}
-                sx={{
-                  minWidth: "auto",
-                  height: 32,
-                  fontSize: "11px",
-                  textTransform: "none",
-                  backgroundColor: variableMenuAnchor
-                    ? "rgba(25, 118, 210, 0.12)"
-                    : "transparent",
-                  color: "rgba(0, 0, 0, 0.7)",
-                  "&:hover": {
-                    backgroundColor: "rgba(0, 0, 0, 0.04)",
-                  },
-                  "& .MuiButton-endIcon": {
-                    marginLeft: 0.5,
-                  },
-                }}
-              >
-                Variable
-              </Button>
-            </Tooltip>
+              <ToolbarButton
+                command="createLink"
+                icon={<LinkIcon />}
+                tooltip="Insert Link"
+                onClick={handleLinkClick}
+              />
+
+              <Tooltip title="Insert Variable">
+                <Button
+                  ref={variableButtonRef}
+                  size="small"
+                  endIcon={<KeyboardArrowDown />}
+                  onMouseDown={(e) => {
+                    e.preventDefault(); // Prevent focus loss
+                  }}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    // Always use the ref to ensure consistent positioning
+                    setVariableMenuAnchor(variableButtonRef.current);
+                  }}
+                  sx={{
+                    minWidth: "auto",
+                    height: 32,
+                    fontSize: "11px",
+                    textTransform: "none",
+                    backgroundColor: variableMenuAnchor
+                      ? "rgba(25, 118, 210, 0.12)"
+                      : "transparent",
+                    color: "rgba(0, 0, 0, 0.7)",
+                    "&:hover": {
+                      backgroundColor: "rgba(0, 0, 0, 0.04)",
+                    },
+                    "& .MuiButton-endIcon": {
+                      marginLeft: 0.5,
+                    },
+                  }}
+                >
+                  Variable
+                </Button>
+              </Tooltip>
+            </Box>
+
+            {/* More options menu for xs, sm, md screens */}
+            <Box
+              sx={{ display: { xs: "flex", lg: "none" }, alignItems: "center" }}
+            >
+              <Tooltip title="More Options">
+                <IconButton
+                  ref={moreOptionsButtonRef}
+                  size="small"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                  }}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setMoreOptionsMenuAnchor(moreOptionsButtonRef.current);
+                  }}
+                  sx={{
+                    width: 32,
+                    height: 32,
+                    backgroundColor: moreOptionsMenuAnchor
+                      ? "rgba(25, 118, 210, 0.12)"
+                      : "transparent",
+                    border: moreOptionsMenuAnchor
+                      ? "1px solid rgba(25, 118, 210, 0.5)"
+                      : "1px solid transparent",
+                    "&:hover": {
+                      backgroundColor: "rgba(0, 0, 0, 0.04)",
+                      boxShadow: "0px 1px 3px rgba(0, 0, 0, 0.2)",
+                    },
+                  }}
+                >
+                  <MoreHoriz />
+                </IconButton>
+              </Tooltip>
+            </Box>
           </Box>
         </Paper>
 
@@ -919,8 +1021,9 @@ export default function TextEditor({ style, props }: TextProps) {
           anchorEl={colorPickerAnchor}
           open={Boolean(colorPickerAnchor)}
           onClose={(event, reason) => {
-            // Only allow closing via the buttons, not clicking outside
+            // Auto-apply color when clicking outside or pressing escape
             if (reason === "backdropClick" || reason === "escapeKeyDown") {
+              handleColorConfirm();
               return;
             }
             handleColorPickerClose();
@@ -1173,6 +1276,140 @@ export default function TextEditor({ style, props }: TextProps) {
               {size.label}
             </MenuItem>
           ))}
+        </Menu>
+
+        {/* More Options Menu - Only shown on xs screens */}
+        <Menu
+          anchorEl={moreOptionsMenuAnchor}
+          open={Boolean(moreOptionsMenuAnchor)}
+          onClose={handleMoreOptionsMenuClose}
+          anchorOrigin={{
+            vertical: "bottom",
+            horizontal: "center",
+          }}
+          transformOrigin={{
+            vertical: "top",
+            horizontal: "center",
+          }}
+          sx={{
+            zIndex: 2000,
+          }}
+          disableAutoFocus
+          disableEnforceFocus
+          disableRestoreFocus
+          slotProps={{
+            paper: {
+              style: {
+                maxHeight: 400,
+                minWidth: 200,
+                overflow: "auto",
+              },
+            },
+          }}
+        >
+          <MenuItem
+            onClick={() => {
+              executeCommand("strikeThrough");
+              handleMoreOptionsMenuClose();
+            }}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <FormatStrikethrough sx={{ mr: 1 }} />
+            Strikethrough
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              executeCommand("superscript");
+              handleMoreOptionsMenuClose();
+            }}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <Superscript sx={{ mr: 1 }} />
+            Superscript
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              executeCommand("subscript");
+              handleMoreOptionsMenuClose();
+            }}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <Subscript sx={{ mr: 1 }} />
+            Subscript
+          </MenuItem>
+          <Divider />
+          <MenuItem
+            onClick={() => {
+              executeCommand("insertUnorderedList");
+              handleMoreOptionsMenuClose();
+            }}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <FormatListBulleted sx={{ mr: 1 }} />
+            Bullet List
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              executeCommand("insertOrderedList");
+              handleMoreOptionsMenuClose();
+            }}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <FormatListNumbered sx={{ mr: 1 }} />
+            Numbered List
+          </MenuItem>
+          <Divider />
+          <MenuItem
+            onClick={() => {
+              handleMoreOptionsMenuClose();
+              setFontFamilyMenuAnchor(moreOptionsButtonRef.current);
+            }}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <FontDownload sx={{ mr: 1 }} />
+            Font Family
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              handleMoreOptionsMenuClose();
+              setFontSizeMenuAnchor(moreOptionsButtonRef.current);
+            }}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <FormatSize sx={{ mr: 1 }} />
+            Font Size
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              handleMoreOptionsMenuClose();
+              setColorPickerAnchor(moreOptionsButtonRef.current);
+            }}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <FormatColorText sx={{ mr: 1 }} />
+            Text Color
+          </MenuItem>
+          <Divider />
+          <MenuItem
+            onClick={() => {
+              handleMoreOptionsMenuClose();
+              handleLinkClick(new MouseEvent("click") as any);
+            }}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <LinkIcon sx={{ mr: 1 }} />
+            Insert Link
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              handleMoreOptionsMenuClose();
+              setVariableMenuAnchor(moreOptionsButtonRef.current);
+            }}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <KeyboardArrowDown sx={{ mr: 1 }} />
+            Insert Variable
+          </MenuItem>
         </Menu>
       </Box>
     );
