@@ -1,18 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 
-import { ToggleButton } from '@mui/material';
-import { HeadingProps, HeadingPropsDefaults, HeadingPropsSchema } from '@usewaypoint/block-heading';
+import { ToggleButton, Box } from "@mui/material";
+import {
+  HeadingProps,
+  HeadingPropsDefaults,
+  HeadingPropsSchema,
+} from "../../../../documents/blocks/Heading/HeadingPropsSchema";
 
-import BaseSidebarPanel from './helpers/BaseSidebarPanel';
-import RadioGroupInput from './helpers/inputs/RadioGroupInput';
-import TextInput from './helpers/inputs/TextInput';
-import MultiStylePropertyPanel from './helpers/style-inputs/MultiStylePropertyPanel';
+import BaseSidebarPanel from "./helpers/BaseSidebarPanel";
+import RadioGroupInput from "./helpers/inputs/RadioGroupInput";
+import MultiStylePropertyPanel from "./helpers/style-inputs/MultiStylePropertyPanel";
+
+// Helper function to get appropriate font size for heading level
+const getHeadingFontSize = (level: string) => {
+  switch (level) {
+    case "h1":
+      return "2em";
+    case "h2":
+      return "1.5em";
+    case "h3":
+      return "1.17em";
+    case "h4":
+      return "1em";
+    case "h5":
+      return "0.83em";
+    case "h6":
+      return "0.67em";
+    default:
+      return "1.5em";
+  }
+};
 
 type HeadingSidebarPanelProps = {
   data: HeadingProps;
   setData: (v: HeadingProps) => void;
 };
-export default function HeadingSidebarPanel({ data, setData }: HeadingSidebarPanelProps) {
+export default function HeadingSidebarPanel({
+  data,
+  setData,
+}: HeadingSidebarPanelProps) {
   const [, setErrors] = useState<Zod.ZodError | null>(null);
 
   const updateData = (d: unknown) => {
@@ -25,16 +51,77 @@ export default function HeadingSidebarPanel({ data, setData }: HeadingSidebarPan
     }
   };
 
+  const currentLevel = data.props?.level ?? HeadingPropsDefaults.level;
+  const currentStyle = data.style;
+
   return (
     <BaseSidebarPanel title="Heading block">
-      <TextInput
-        label="Content"
-        rows={3}
-        defaultValue={data.props?.text ?? HeadingPropsDefaults.text}
-        onChange={(text) => {
-          updateData({ ...data, props: { ...data.props, text } });
-        }}
-      />
+      {/* Rich Text Content Display */}
+      {/* <Box sx={{ mb: 2 }}>
+        <Box
+          component="label"
+          sx={{
+            display: "block",
+            mb: 1,
+            fontSize: "0.875rem",
+            fontWeight: 500,
+            color: "text.primary",
+          }}
+        >
+          Content
+        </Box>
+        <Box
+          sx={{
+            border: 1,
+            borderColor: "divider",
+            borderRadius: 1,
+            p: 1.5,
+            minHeight: 60,
+            backgroundColor: "background.paper",
+            fontSize: getHeadingFontSize(currentLevel),
+            fontWeight: "bold", // Default bold for headings
+            lineHeight: 1.5,
+            cursor: "text",
+            "&:hover": {
+              borderColor: "primary.main",
+            },
+            // Apply custom styles if available
+            ...(currentStyle && {
+              color: currentStyle.color || undefined,
+              backgroundColor:
+                currentStyle.backgroundColor || "background.paper",
+              fontFamily: currentStyle.fontFamily || undefined,
+              fontWeight: currentStyle.fontWeight || "bold",
+              textAlign: currentStyle.textAlign || undefined,
+            }),
+          }}
+          onClick={() => {
+            // Focus hint - could add click to focus editor functionality
+          }}
+        >
+          {(data.props?.text ?? HeadingPropsDefaults.text) ? (
+            <div
+              dangerouslySetInnerHTML={{
+                __html: data.props?.text ?? HeadingPropsDefaults.text,
+              }}
+            />
+          ) : (
+            <span style={{ color: "#999", fontStyle: "italic" }}>
+              Click to edit heading
+            </span>
+          )}
+        </Box>
+        <Box
+          sx={{
+            fontSize: "0.75rem",
+            color: "text.secondary",
+            mt: 0.5,
+          }}
+        >
+          Edit content directly in the editor to see rich formatting
+        </Box>
+      </Box> */}
+
       <RadioGroupInput
         label="Level"
         defaultValue={data.props?.level ?? HeadingPropsDefaults.level}
@@ -45,9 +132,17 @@ export default function HeadingSidebarPanel({ data, setData }: HeadingSidebarPan
         <ToggleButton value="h1">H1</ToggleButton>
         <ToggleButton value="h2">H2</ToggleButton>
         <ToggleButton value="h3">H3</ToggleButton>
+        <ToggleButton value="h4">H4</ToggleButton>
       </RadioGroupInput>
       <MultiStylePropertyPanel
-        names={['color', 'backgroundColor', 'fontFamily', 'fontWeight', 'textAlign', 'padding']}
+        names={[
+          "color",
+          "backgroundColor",
+          "fontFamily",
+          "fontWeight",
+          "textAlign",
+          "padding",
+        ]}
         value={data.style}
         onChange={(style) => updateData({ ...data, style })}
       />

@@ -1,27 +1,52 @@
-import React from 'react';
+import React from "react";
 
-import { ArrowDownwardOutlined, ArrowUpwardOutlined, DeleteOutlined } from '@mui/icons-material';
-import { IconButton, Paper, Stack, SxProps, Tooltip } from '@mui/material';
+import {
+  ArrowDownwardOutlined,
+  ArrowUpwardOutlined,
+  DeleteOutlined,
+} from "@mui/icons-material";
+import {
+  IconButton,
+  Paper,
+  Stack,
+  SxProps,
+  Tooltip,
+  useTheme,
+  useMediaQuery,
+} from "@mui/material";
 
-import { TEditorBlock } from '../../../editor/core';
-import { resetDocument, setSelectedBlockId, useDocument } from '../../../editor/EditorContext';
-import { ColumnsContainerProps } from '../../ColumnsContainer/ColumnsContainerPropsSchema';
+import { TEditorBlock } from "../../../editor/core";
+import {
+  resetDocument,
+  setSelectedBlockId,
+  useDocument,
+} from "../../../editor/EditorContext";
+import { ColumnsContainerProps } from "../../ColumnsContainer/ColumnsContainerPropsSchema";
 
-const sx: SxProps = {
-  position: 'absolute',
-  top: 0,
-  left: -56,
-  borderRadius: 64,
-  paddingX: 0.5,
-  paddingY: 1,
-  zIndex: 'fab',
-};
+// Dynamic styles based on screen size
+const getSxProps = (isMobile: boolean): SxProps => ({
+  position: "absolute",
+  bottom: isMobile ? -38 : -12, // Lower positioning on mobile, original on desktop
+  right: isMobile ? 0 : undefined, // Right positioning on mobile
+  left: isMobile ? undefined : -56, // Left positioning on desktop (original)
+  borderRadius: isMobile ? 20 : 64, // More rounded horizontally on mobile, circular on desktop
+  paddingX: isMobile ? 1 : 0.5, // More padding horizontally on mobile
+  paddingY: isMobile ? 0.5 : 1, // Less padding vertically on mobile, more on desktop
+  zIndex: "fab",
+  boxShadow: 2,
+});
 
 type Props = {
   blockId: string;
 };
 export default function TuneMenu({ blockId }: Props) {
   const document = useDocument();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
+  // Use different tooltip placement and styles based on screen size
+  const tooltipPlacement = isMobile ? "top" : "right";
+  const sx = getSxProps(isMobile);
 
   const handleDeleteClick = () => {
     const filterChildrenIds = (childrenIds: string[] | null | undefined) => {
@@ -37,7 +62,7 @@ export default function TuneMenu({ blockId }: Props) {
         continue;
       }
       switch (block.type) {
-        case 'EmailLayout':
+        case "EmailLayout":
           nDocument[id] = {
             ...block,
             data: {
@@ -46,7 +71,7 @@ export default function TuneMenu({ blockId }: Props) {
             },
           };
           break;
-        case 'Container':
+        case "Container":
           nDocument[id] = {
             ...block,
             data: {
@@ -58,9 +83,9 @@ export default function TuneMenu({ blockId }: Props) {
             },
           };
           break;
-        case 'ColumnsContainer':
+        case "ColumnsContainer":
           nDocument[id] = {
-            type: 'ColumnsContainer',
+            type: "ColumnsContainer",
             data: {
               style: block.data.style,
               props: {
@@ -80,7 +105,7 @@ export default function TuneMenu({ blockId }: Props) {
     resetDocument(nDocument);
   };
 
-  const handleMoveClick = (direction: 'up' | 'down') => {
+  const handleMoveClick = (direction: "up" | "down") => {
     const moveChildrenIds = (ids: string[] | null | undefined) => {
       if (!ids) {
         return ids;
@@ -90,10 +115,16 @@ export default function TuneMenu({ blockId }: Props) {
         return ids;
       }
       const childrenIds = [...ids];
-      if (direction === 'up' && index > 0) {
-        [childrenIds[index], childrenIds[index - 1]] = [childrenIds[index - 1], childrenIds[index]];
-      } else if (direction === 'down' && index < childrenIds.length - 1) {
-        [childrenIds[index], childrenIds[index + 1]] = [childrenIds[index + 1], childrenIds[index]];
+      if (direction === "up" && index > 0) {
+        [childrenIds[index], childrenIds[index - 1]] = [
+          childrenIds[index - 1],
+          childrenIds[index],
+        ];
+      } else if (direction === "down" && index < childrenIds.length - 1) {
+        [childrenIds[index], childrenIds[index + 1]] = [
+          childrenIds[index + 1],
+          childrenIds[index],
+        ];
       }
       return childrenIds;
     };
@@ -104,7 +135,7 @@ export default function TuneMenu({ blockId }: Props) {
         continue;
       }
       switch (block.type) {
-        case 'EmailLayout':
+        case "EmailLayout":
           nDocument[id] = {
             ...block,
             data: {
@@ -113,7 +144,7 @@ export default function TuneMenu({ blockId }: Props) {
             },
           };
           break;
-        case 'Container':
+        case "Container":
           nDocument[id] = {
             ...block,
             data: {
@@ -125,9 +156,9 @@ export default function TuneMenu({ blockId }: Props) {
             },
           };
           break;
-        case 'ColumnsContainer':
+        case "ColumnsContainer":
           nDocument[id] = {
-            type: 'ColumnsContainer',
+            type: "ColumnsContainer",
             data: {
               style: block.data.style,
               props: {
@@ -150,19 +181,43 @@ export default function TuneMenu({ blockId }: Props) {
 
   return (
     <Paper sx={sx} onClick={(ev) => ev.stopPropagation()}>
-      <Stack>
-        <Tooltip title="Move up" placement="left-start">
-          <IconButton onClick={() => handleMoveClick('up')} sx={{ color: 'text.primary' }}>
+      <Stack direction={isMobile ? "row" : "column"} spacing={0.5}>
+        <Tooltip title="Move up" placement={tooltipPlacement}>
+          <IconButton
+            onClick={() => handleMoveClick("up")}
+            sx={{
+              color: "text.primary",
+              padding: 0.5,
+              "&:hover": { backgroundColor: "action.hover" },
+            }}
+            size="small"
+          >
             <ArrowUpwardOutlined fontSize="small" />
           </IconButton>
         </Tooltip>
-        <Tooltip title="Move down" placement="left-start">
-          <IconButton onClick={() => handleMoveClick('down')} sx={{ color: 'text.primary' }}>
+        <Tooltip title="Move down" placement={tooltipPlacement}>
+          <IconButton
+            onClick={() => handleMoveClick("down")}
+            sx={{
+              color: "text.primary",
+              padding: 0.5,
+              "&:hover": { backgroundColor: "action.hover" },
+            }}
+            size="small"
+          >
             <ArrowDownwardOutlined fontSize="small" />
           </IconButton>
         </Tooltip>
-        <Tooltip title="Delete" placement="left-start">
-          <IconButton onClick={handleDeleteClick} sx={{ color: 'text.primary' }}>
+        <Tooltip title="Delete" placement={tooltipPlacement}>
+          <IconButton
+            onClick={handleDeleteClick}
+            sx={{
+              color: "text.primary",
+              padding: 0.5,
+              "&:hover": { backgroundColor: "action.hover" },
+            }}
+            size="small"
+          >
             <DeleteOutlined fontSize="small" />
           </IconButton>
         </Tooltip>
