@@ -30,6 +30,7 @@
 		"clean": "rimraf dist"
 	},
 	"dependencies": {
+		"@iconify/react": "^6.0.2",
 		"@usewaypoint/block-avatar": "^0.0.3",
 		"@usewaypoint/block-button": "^0.0.3",
 		"@usewaypoint/block-columns-container": "^0.0.3",

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 const COLOR_SCHEMA = z
   .string()
@@ -8,15 +8,15 @@ const COLOR_SCHEMA = z
 
 const FONT_FAMILY_SCHEMA = z
   .enum([
-    'MODERN_SANS',
-    'BOOK_SANS',
-    'ORGANIC_SANS',
-    'GEOMETRIC_SANS',
-    'HEAVY_SANS',
-    'ROUNDED_SANS',
-    'MODERN_SERIF',
-    'BOOK_SERIF',
-    'MONOSPACE',
+    "MODERN_SANS",
+    "BOOK_SANS",
+    "ORGANIC_SANS",
+    "GEOMETRIC_SANS",
+    "HEAVY_SANS",
+    "ROUNDED_SANS",
+    "MODERN_SERIF",
+    "BOOK_SERIF",
+    "MONOSPACE",
   ])
   .nullable()
   .optional();
@@ -28,6 +28,14 @@ const EmailLayoutPropsSchema = z.object({
   canvasColor: COLOR_SCHEMA,
   textColor: COLOR_SCHEMA,
   fontFamily: FONT_FAMILY_SCHEMA,
+  maxWidth: z
+    .object({
+      sm: z.number().optional().nullable(), // Small screens (mobile)
+      md: z.number().optional().nullable(), // Medium screens (tablet)
+      lg: z.number().optional().nullable(), // Large screens (desktop)
+    })
+    .optional()
+    .nullable(),
   childrenIds: z.array(z.string()).optional().nullable(),
 });
 
