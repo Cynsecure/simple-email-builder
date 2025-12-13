@@ -11,9 +11,6 @@ export default function Editor(props: EditorProps) {
 		<ThemeProvider theme={theme}>
 			<CssBaseline />
 		<Box position="relative" bgcolor="white" overflow="hidden" height="100vh" display="flex" flexDirection="column">
-			<Box height={100} width={"100%"} bgcolor="red">
-				demo
-			</Box>
 			<Box flex={1} overflow="hidden">
 				<EmailEditor {...props} />
 			</Box>
