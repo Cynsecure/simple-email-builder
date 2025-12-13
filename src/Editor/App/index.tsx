@@ -430,7 +430,7 @@ export default function Editor({
   }, [onSnapshot]);
 
   return (
-    <>
+    <Box height="100%">
       {/* Desktop Inspector Drawer - Hidden on mobile */}
       {!isMobile && (
         <InspectorDrawer metadata={metadata} onFileUpload={onFileUpload} />
@@ -446,6 +446,7 @@ export default function Editor({
           marginBottom: isMobile ? "100px" : 0, // Updated from 80px to 100px to match new bottom bar height
           padding: isMobile ? "8px" : 0, // Add some padding on mobile
           transition: [marginRightTransition].join(", "),
+          height: "100%",
         }}
       >
         <TemplatePanel />
@@ -475,6 +476,6 @@ export default function Editor({
           />
         </div>
       </Box>
-    </>
+    </Box>
   );
 }

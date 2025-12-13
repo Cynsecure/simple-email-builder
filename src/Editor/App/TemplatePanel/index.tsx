@@ -290,8 +290,9 @@ export default function TemplatePanel() {
       <Box
         sx={{
           height: {
-            xs: "100vh", // Full height on mobile (fixed header doesn't take space)
-            md: "calc(100vh - 49px)", // Desktop: subtract 49px toolbar height
+            xs: "100%", // Full height on mobile (fixed header doesn't take space)
+            // md: "calc(100vh - 49px)", // Desktop: subtract 49px toolbar height
+            md: "100%",
           },
           pt: { xs: "80px", md: 0 }, // Add top padding on mobile for fixed header
           overflow: "auto",
@@ -299,6 +300,7 @@ export default function TemplatePanel() {
         }}
       >
         {renderMainPanel()}
+        <Box height={{xs: 400, md: 90}} />
       </Box>
 
       {/* HTML Export Modal */}
