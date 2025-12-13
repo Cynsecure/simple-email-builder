@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-import { ToggleButton, Box } from "@mui/material";
+import { ToggleButton } from "@mui/material";
 import {
   HeadingProps,
   HeadingPropsDefaults,
@@ -11,25 +11,7 @@ import BaseSidebarPanel from "./helpers/BaseSidebarPanel";
 import RadioGroupInput from "./helpers/inputs/RadioGroupInput";
 import MultiStylePropertyPanel from "./helpers/style-inputs/MultiStylePropertyPanel";
 
-// Helper function to get appropriate font size for heading level
-const getHeadingFontSize = (level: string) => {
-  switch (level) {
-    case "h1":
-      return "2em";
-    case "h2":
-      return "1.5em";
-    case "h3":
-      return "1.17em";
-    case "h4":
-      return "1em";
-    case "h5":
-      return "0.83em";
-    case "h6":
-      return "0.67em";
-    default:
-      return "1.5em";
-  }
-};
+
 
 type HeadingSidebarPanelProps = {
   data: HeadingProps;
