@@ -1,6 +1,6 @@
 import React from "react";
 
-import { Box, CssBaseline, ThemeProvider } from "@mui/material";
+import {  CssBaseline, ThemeProvider } from "@mui/material";
 
 import EmailEditor from "./App";
 import theme from "./theme";
@@ -10,11 +10,7 @@ export default function Editor(props: EditorProps) {
 	return (
 		<ThemeProvider theme={theme}>
 			<CssBaseline />
-		<Box position="relative" bgcolor="white" overflow="hidden" height="100vh" display="flex" flexDirection="column">
-			<Box flex={1} overflow="hidden">
-				<EmailEditor {...props} />
-			</Box>
-		</Box>
+			<EmailEditor {...props} />
 		</ThemeProvider>
 	);
 }
