@@ -26,21 +26,37 @@ function convertDocumentForReader(document: TEditorConfiguration) {
   Object.keys(convertedDocument).forEach((blockId) => {
     const block = convertedDocument[blockId];
 
-    // Convert heading levels h4, h5, h6 to h3 for reader compatibility
-    if (block.type === "Heading" && block.data.props?.level) {
-      const level = block.data.props.level;
-      if (level === "h4" || level === "h5" || level === "h6") {
-        convertedDocument[blockId] = {
-          ...block,
-          data: {
-            ...block.data,
-            props: {
-              ...block.data.props,
-              level: "h3" as const,
-            },
+    // Convert Heading blocks to Html blocks for rich text support
+    if (block.type === "Heading") {
+      const content = block.data.props?.text || "";
+      const level = block.data.props?.level || "h2";
+      const wrappedContent = `<${level}>${content}</${level}>`;
+
+      convertedDocument[blockId] = {
+        ...block,
+        type: "Html",
+        data: {
+          ...block.data,
+          props: {
+            contents: wrappedContent,
           },
-        };
-      }
+        },
+      };
+    }
+
+    // Convert Text blocks to Html blocks
+    if (block.type === "Text") {
+      const content = block.data.props?.richText || "";
+      convertedDocument[blockId] = {
+        ...block,
+        type: "Html",
+        data: {
+          ...block.data,
+          props: {
+            contents: content,
+          },
+        },
+      };
     }
 
     // Convert Button blocks to Html blocks for preview
@@ -428,6 +444,12 @@ export default function Editor({
         design: document,
       });
     }
+    console.log(
+      "Html",
+      renderToStaticMarkup(convertDocumentForReader(document), {
+        rootBlockId: "root",
+      })
+    );
     triggerSnapshot();
   }, [document]);
 
