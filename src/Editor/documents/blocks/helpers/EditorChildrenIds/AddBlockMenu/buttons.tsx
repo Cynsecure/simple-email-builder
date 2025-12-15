@@ -29,7 +29,7 @@ export const BUTTONS: TButtonProps[] = [
       data: {
         props: { text: "Hello friend" },
         style: {
-          padding: { top: 8, bottom: 16, left: 24, right: 24 },
+          padding: { top: 8, bottom: 8, left: 24, right: 24 },
         },
       },
     }),
