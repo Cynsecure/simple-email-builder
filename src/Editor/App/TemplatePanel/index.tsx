@@ -227,7 +227,7 @@ export default function TemplatePanel() {
           borderBottom: 1,
           borderColor: "divider",
           backgroundColor: "white",
-          position: { xs: "fixed", md: "sticky" }, // Fixed on mobile, sticky on desktop
+          position: "relative", // Use default positioning
           top: 0,
           left: { xs: 0, md: "auto" }, // Full width on mobile
           right: { xs: 0, md: "auto" }, // Full width on mobile
@@ -290,17 +290,16 @@ export default function TemplatePanel() {
       <Box
         sx={{
           height: {
-            xs: "100%", // Full height on mobile (fixed header doesn't take space)
-            // md: "calc(100vh - 49px)", // Desktop: subtract 49px toolbar height
+            xs: "100%", // Full height on mobile
             md: "100%",
           },
-          pt: { xs: "80px", md: 0 }, // Add top padding on mobile for fixed header
+          pt: 0, // Remove top padding
           overflow: "auto",
           minWidth: { xs: "100%", sm: 370 }, // Full width on mobile, 370px minimum on larger screens
         }}
       >
         {renderMainPanel()}
-        <Box height={{xs: 400, md: 90}} />
+        <Box height={{ xs: 400, md: 90 }} />
       </Box>
 
       {/* HTML Export Modal */}
