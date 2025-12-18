@@ -227,7 +227,7 @@ export default function TemplatePanel() {
           borderBottom: 1,
           borderColor: "divider",
           backgroundColor: "white",
-          position: "relative", // Use default positioning to prevent overlapping
+          position: "relative", // Use default positioning
           top: 0,
           left: { xs: 0, md: "auto" }, // Full width on mobile
           right: { xs: 0, md: "auto" }, // Full width on mobile
@@ -293,7 +293,7 @@ export default function TemplatePanel() {
             xs: "100%", // Full height on mobile
             md: "100%",
           },
-          pt: 0, // Remove top padding since header is now in document flow
+          pt: 0, // Remove top padding
           overflow: "auto",
           minWidth: { xs: "100%", sm: 370 }, // Full width on mobile, 370px minimum on larger screens
         }}
