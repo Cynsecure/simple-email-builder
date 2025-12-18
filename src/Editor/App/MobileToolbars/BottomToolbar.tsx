@@ -449,8 +449,7 @@ export default function BottomToolbar(props: BottomToolbarProps) {
           display: "flex",
           justifyContent: !hasSelectedBlock ? "flex-start" : "center",
           alignItems: "center",
-          minHeight: 120,
-          py: 2,
+          pb: 2,
           px: 0,
           overflow: "hidden",
         }}
